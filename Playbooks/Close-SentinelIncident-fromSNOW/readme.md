@@ -55,7 +55,7 @@ The incident properties that exported from Azure sentinel into ServiceNow incide
 
 > Note
 > 
-> The Log Analytics Logic App connector works only with a user or service principal. [Managed identity support may be available in the future](https://techcommunity.microsoft.com/t5/integrations-on-azure/azure-logic-apps-authenticate-with-managed-identity-for-azure-ad/ba-p/2066254)
+> The Log Analytics Logic App connector works only with a user or service principal. [Managed identity support may be available in the future](https://docs.microsoft.com/en-us/answers/questions/263744/trouble-connecting-to-monitor-log-in-logic-app.html)
 
 3.	On *Get incident – refresh ETAG* (Step 3) authenticate to AAD APP with a user or managed identity that has an Azure Sentinel Reader role.
 4.	On *Close incident* (Step 4) authenticate use a user or managed identity that has an Azure Sentinel Responder role. 
@@ -70,7 +70,10 @@ To create the business rule
 
 1. Login to your ServiceNow Instance.
 1. In the left navigation type business rules, click *New* to create a new business rule.
-      (For a business rule types and scopes refer to ServiceNow documentation)
+
+> NOTE
+> 
+> For a business rule types and scopes refer to [ServiceNow documentation](https://docs.servicenow.com/bundle/orlando-application-development/page/script/business-rules/concept/c_BusinessRulesInScopedApps.html)
 
 1. Give the business rule a name, select Incident as the table, and check the Active and the Advanced checkboxes.
 
