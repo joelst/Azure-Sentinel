@@ -127,7 +127,7 @@
                                 "uri": "https://management.azure.com/subscriptions/@{body('Parse_JSON_2')?['value']?[0]['SubId']}/resourceGroups/@{body('Parse_JSON_2')?['value']?[0]['RG']}/providers/Microsoft.OperationalInsights/workspaces/@{body('Parse_JSON_2')?['value']?[0]['WorkspaceName']}/providers/Microsoft.SecurityInsights/incidents/@{body('Parse_JSON_2')?['value']?[0]['IncidentName']}/?api-version=2020-01-01"
                             }
                         },
-                        "GEt_incident_-_bring_fresh_Etag": {
+                        "Get_incident_-_refresh_Etag": {
                             "runAfter": {
                                 "Parse_JSON_2": [
                                     "Succeeded"
@@ -209,13 +209,13 @@
                         },
                         "Parse_JSON_3": {
                             "runAfter": {
-                                "GEt_incident_-_bring_fresh_Etag": [
+                                "Get_incident_-_refresh_Etag": [
                                     "Succeeded"
                                 ]
                             },
                             "type": "ParseJson",
                             "inputs": {
-                                "content": "@body('GEt_incident_-_bring_fresh_Etag')",
+                                "content": "@body('Get_incident_-_refresh_Etag')",
                                 "schema": {
                                     "properties": {
                                         "etag": {
