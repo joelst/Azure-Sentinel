@@ -1,148 +1,3 @@
-function Get-RoleAndGuardDutyS3Policy
-{
-	<#
-    .SYNOPSIS 
-        Creates a S3 Policy for GuardDuty based on specified bucket name, role ARN, and Kms ARN
-
-    .PARAMETER RoleArn
-		Specifies the Role ARN
-	.PARAMETER BucketName
-		Specifies the S3 Bucket
-    .PARAMETER KmsArn
-        Specifies the KMS ARN
-    #>
-    [OutputType([string])]
-    [CmdletBinding()]
-    param (
-        [Parameter(position=0)]
-        [ValidateNotNullOrEmpty()][string]
-        $RoleArn,
-        [Parameter(position=1)]
-        [ValidateNotNullOrEmpty()][string]
-        $BucketName,
-        [Parameter(position=2)]
-        [ValidateNotNullOrEmpty()][string]
-        $KmsArn
-    )  
-    $s3PolicyForRoleAndGuardDuty = "{
-	 'Statement': [
-		{
-            'Sid': 'Allow Arn read access S3 bucket',
-            'Effect': 'Allow',
-            'Principal': {
-                'AWS': '$RoleArn'
-            },
-            'Action': ['s3:Get*','s3:List*'],
-            'Resource': 'arn:aws:s3:::$BucketName/*'
-        },
-		{
-            'Sid': 'Allow GuardDuty to use the getBucketLocation operation',
-            'Effect': 'Allow',
-            'Principal': {
-                'Service': 'guardduty.amazonaws.com'
-            },
-            'Action': 's3:GetBucketLocation',
-            'Resource': 'arn:aws:s3:::$BucketName'
-        },
-        {
-            'Sid': 'Allow GuardDuty to upload objects to the bucket',
-            'Effect': 'Allow',
-            'Principal': {
-                'Service': 'guardduty.amazonaws.com'
-            },
-            'Action': 's3:PutObject',
-            'Resource': 'arn:aws:s3:::$BucketName/*'
-        },
-        {
-            'Sid': 'Deny unencrypted object uploads. This is optional',
-            'Effect': 'Deny',
-            'Principal': {
-                'Service': 'guardduty.amazonaws.com'
-            },
-            'Action': 's3:PutObject',
-            'Resource': 'arn:aws:s3:::$BucketName/*',
-            'Condition': {
-                'StringNotEquals': {
-                    's3:x-amz-server-side-encryption': 'aws:kms'
-                }
-            }
-        },
-        {
-            'Sid': 'Deny incorrect encryption header. This is optional',
-            'Effect': 'Deny',
-            'Principal': {
-                'Service': 'guardduty.amazonaws.com'
-            },
-            'Action': 's3:PutObject',
-            'Resource': 'arn:aws:s3:::$BucketName/*',
-            'Condition': {
-                'StringNotEquals': {
-                    's3:x-amz-server-side-encryption-aws-kms-key-id': '$KmsArn'
-                }
-            }
-        },
-        {
-            'Sid': 'Deny non-HTTPS access',
-            'Effect': 'Deny',
-            'Principal': '*',
-            'Action': 's3:*',
-            'Resource': 'arn:aws:s3:::$BucketName/*',
-            'Condition': {
-                'Bool': {
-                    'aws:SecureTransport': 'false'
-                }
-            }
-	 }]}"	
-	return $s3PolicyForRoleAndGuardDuty.Replace("'",'"')
-}
-
-function Get-GuardDutyAndRoleKmsPolicy
-{
-	<#
-    .SYNOPSIS 
-        Creates a customized KMS Policy for GuardDuty based on specified role ARN
-    .PARAMETER RoleArn
-		Specifies the Role ARN
-    #>
-    [OutputType([string])]
-    [CmdletBinding()]
-    param (
-        [Parameter(position=0)]
-        [ValidateNotNullOrEmpty()][string]
-        $RoleArn
-    )
-
-    $kmsPolicy = "{
-		'Statement': [
-        {
-            'Sid': 'Allow GuardDuty to use the key',
-            'Effect': 'Allow',
-            'Principal': {
-                'Service': 'guardduty.amazonaws.com'
-            },
-            'Action': 'kms:GenerateDataKey',
-            'Resource': '*'
-        },
-        {
-            'Sid': 'Allow use of the key',
-            'Effect': 'Allow',
-            'Principal': {
-                'AWS': ['$RoleArn']
-            },
-            'Action': [
-                'kms:Encrypt',
-                'kms:Decrypt',
-                'kms:ReEncrypt*',
-                'kms:GenerateDataKey*',
-                'kms:DescribeKey'
-            ],
-            'Resource': '*'
-        }
-    ]}"
-	
-	return $kmsPolicy.Replace("'",'"')
-}
-
 function Enable-GuardDuty
 {
     <#
@@ -212,53 +67,59 @@ function Set-GuardDutyPublishDestinationBucket
     } 
 }
 
-# ***********       Main Flow       ***********
+function New-GuardDutyDataConnector
+{
+	<#
+	.SYNOPSIS
+		Main function to create the GuardDuty data connector
+	#>
 
-Write-Log -Message "Starting GuardDuty data connector configuration script" -LogFileName $LogFileName -Severity Verbose
-Write-Log -Message "This script creates an Assume Role with minimal permissions to grant Azure Sentinel access to your logs in a designated S3 bucket & SQS of your choice, enable GuardDuty Logs, S3 bucket, SQS Queue, and S3 notifications." -LogFileName $LogFileName -LinePadding 2
+    Write-Log -Message "Starting GuardDuty data connector configuration script" -LogFileName $LogFileName -Severity Verbose
+    Write-Log -Message "This script creates an Assume Role with minimal permissions to grant Azure Sentinel access to your logs in a designated S3 bucket & SQS of your choice, enable GuardDuty Logs, S3 bucket, SQS Queue, and S3 notifications." -LogFileName $LogFileName -LinePadding 2
 
-# Connect using the AWS CLI
-Get-AwsConfig
+    # Connect using the AWS CLI
+    Get-AwsConfig
 
-New-ArnRole
-Write-Log -Message "Executing: aws iam get-role --role-name $roleName" -LogFileName $LogFileName -Severity Verbose
-$roleArnObject = aws iam get-role --role-name $roleName
-$roleArn = ($roleArnObject | ConvertFrom-Json ).Role.Arn
-Write-Log -Message $roleArn -LogFileName $LogFileName -Severity Verbose
+    New-ArnRole
+    Write-Log -Message "Executing: aws iam get-role --role-name $roleName" -LogFileName $LogFileName -Severity Verbose
+    $roleArnObject = aws iam get-role --role-name $roleName
+    $roleArn = ($roleArnObject | ConvertFrom-Json ).Role.Arn
+    Write-Log -Message $roleArn -LogFileName $LogFileName -Severity Verbose
 
-# Create S3 bucket for storing logs
-New-S3Bucket
+    # Create S3 bucket for storing logs
+    New-S3Bucket -BucketName $BucketName -AwsRegion $AwsRegion
 
-Write-Log -Message "Executing: (aws sts get-caller-identity | ConvertFrom-Json).Account" -LogFileName $LogFileName -Severity Verbose
-$callerAccount = (aws sts get-caller-identity | ConvertFrom-Json).Account
-Write-Log -Message $callerAccount -LogFileName $LogFileName -Severity Verbose
+    Write-Log -Message "Executing: (aws sts get-caller-identity | ConvertFrom-Json).Account" -LogFileName $LogFileName -Severity Verbose
+    $callerAccount = (aws sts get-caller-identity | ConvertFrom-Json).Account
+    Write-Log -Message $callerAccount -LogFileName $LogFileName -Severity Verbose
 
-New-KMS
-$kmsArn = ($kmsKeyDescription | ConvertFrom-Json).KeyMetadata.Arn 
-$kmsKeyId = ($kmsKeyDescription | ConvertFrom-Json).KeyMetadata.KeyId
-Write-Log -Message "kmsArn: $kmsArn kmsKeyId: $kmsKeyId" -LogFileName $LogFileName -Severity Verbose
+    New-KMS
+    $kmsArn = ($kmsKeyDescription | ConvertFrom-Json).KeyMetadata.Arn 
+    $kmsKeyId = ($kmsKeyDescription | ConvertFrom-Json).KeyMetadata.KeyId
+    Write-Log -Message "kmsArn: $kmsArn kmsKeyId: $kmsKeyId" -LogFileName $LogFileName -Severity Verbose
 
-New-SQSQueue
-Write-Log -Message "Executing: ((aws sqs get-queue-url --queue-name $sqsName) | ConvertFrom-Json).QueueUrl" -LogFileName $LogFileName -Severity Verbose
-$sqsUrl = ((aws sqs get-queue-url --queue-name $sqsName) | ConvertFrom-Json).QueueUrl
-Write-Log -Message "Executing: ((aws sqs get-queue-attributes --queue-url $sqsUrl --attribute-names QueueArn )| ConvertFrom-Json).Attributes.QueueArn" -LogFileName $LogFileName -Severity Verbose
-$sqsArn =  ((aws sqs get-queue-attributes --queue-url $sqsUrl --attribute-names QueueArn )| ConvertFrom-Json).Attributes.QueueArn
-Write-Log -Message "sqsUrl: $sqsUrl sqsArn: $sqsArn" -LogFileName $LogFileName -Severity Verbose
+    New-SQSQueue
+    Write-Log -Message "Executing: ((aws sqs get-queue-url --queue-name $sqsName) | ConvertFrom-Json).QueueUrl" -LogFileName $LogFileName -Severity Verbose
+    $sqsUrl = ((aws sqs get-queue-url --queue-name $sqsName) | ConvertFrom-Json).QueueUrl
+    Write-Log -Message "Executing: ((aws sqs get-queue-attributes --queue-url $sqsUrl --attribute-names QueueArn )| ConvertFrom-Json).Attributes.QueueArn" -LogFileName $LogFileName -Severity Verbose
+    $sqsArn =  ((aws sqs get-queue-attributes --queue-url $sqsUrl --attribute-names QueueArn )| ConvertFrom-Json).Attributes.QueueArn
+    Write-Log -Message "sqsUrl: $sqsUrl sqsArn: $sqsArn" -LogFileName $LogFileName -Severity Verbose
 
-$customMessage = "Changes GuardDuty: Kms GenerateDataKey to GuardDuty"
-$kmsRequiredPolicies = Get-GuardDutyAndRoleKmsPolicy -RoleArn $roleArn
-Update-KmsPolicy -RequiredPolicy $kmsRequiredPolicies -CustomMessage $customMessage
+    $customMessage = "Changes GuardDuty: Kms GenerateDataKey to GuardDuty"
+    $kmsRequiredPolicies = Get-GuardDutyAndRoleKmsPolicy -RoleArn $roleArn
+    Update-KmsPolicy -RequiredPolicy $kmsRequiredPolicies -CustomMessage $customMessage
 
-Update-SQSPolicy
+    Update-SQSPolicy
 
-$customMessage = "Changes S3: Get GuardDuty notifications"
-$s3RequiredPolicy = Get-RoleAndGuardDutyS3Policy -RoleArn $roleArn -BucketName $bucketName -KmsArn $kmsArn
-Update-S3Policy -RequiredPolicy $s3RequiredPolicy -CustomMessage $customMessage
+    $customMessage = "Changes S3: Get GuardDuty notifications"
+    $s3RequiredPolicy = Get-RoleAndGuardDutyS3Policy -RoleArn $roleArn -BucketName $bucketName -KmsArn $kmsArn
+    Update-S3Policy -RequiredPolicy $s3RequiredPolicy -CustomMessage $customMessage
 
-Enable-S3EventNotification -DefaultEventNotificationPrefix "AWSLogs/${callerAccount}/GuardDuty/"
+    Enable-S3EventNotification -DefaultEventNotificationPrefix "AWSLogs/${callerAccount}/GuardDuty/"
 
-Enable-GuardDuty
-Set-GuardDutyPublishDestinationBucket
- 
-# Output information needed to configure Sentinel data connector
-Write-RequiredConnectorDefinitionInfo
+    Enable-GuardDuty
+    Set-GuardDutyPublishDestinationBucket
+    
+    # Output information needed to configure Sentinel data connector
+    Write-RequiredConnectorDefinitionInfo
+}

@@ -28,13 +28,19 @@ param (
     [Parameter()]
     [ValidateSet("VPC","CloudTrail","GuardDuty")][string]$AwsLogType
 )
+
 # Include helper scripts
 . ".\Utils\HelperFunctions.ps1"
 . ".\Utils\AwsResourceCreator.ps1"
 . ".\Utils\CommonAwsPolicies.ps1"
 . ".\Utils\AwsPoliciesUpdate.ps1"
 
-# Verify that the AWS CLI is available
+# Include configuration scripts
+. ".\ConfigCloudTrailDataConnector.ps1"
+. ".\ConfigGuardDutyDataConnector.ps1"
+. ".\ConfigVpcFlowDataConnector.ps1"
+
+# Verify the AWS CLI is available.
 if ($null -eq (Get-Command "aws" -ErrorAction SilentlyContinue)) 
 { 
 
@@ -70,9 +76,9 @@ if ($AwsLogType -eq "")
 
 switch ($AwsLogType)
 {
-    "VPC" {.\ConfigVpcFlowDataConnector.ps1; break}
-    "CloudTrail" {.\ConfigCloudTrailDataConnector.ps1 ; break }
-    "GuardDuty" {.\ConfigGuardDutyDataConnector.ps1 ; break }
+    "VPC" {New-VpcFlowDataConnector}
+    "CloudTrail" {New-CloudTrailDataConnector}
+    "GuardDuty" {New-GuardDutyDataConnector }
     default {Write-Log -Message "Invalid log type" -LogFileName $LogFileName -Severity Error; exit}
 }
 
