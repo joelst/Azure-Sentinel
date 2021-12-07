@@ -12,7 +12,7 @@ More information on the connector and configuration instructions can be found on
 
 This set of PowerShell scripts can be used to automatically configure the necessary resources.
 
-At a high level, these scripts do the following:
+At a high level, these scripts perform the following steps:
 
 1. Create an AWS assumed role and grant access to the AWS Sentinel account.
 2. Configure the AWS service (VPC Flow Logs/GuardDuty) to export gzipped logs to an S3 bucket.
@@ -32,10 +32,12 @@ You must have PowerShell and the AWS CLI installed before using these scripts.
 Download the scripts in this folder and subfolders or download and extract the `ConfigAwsS3DataConnectorScripts.zip` file to your computer. 
 Make sure that you have PowerShell and the AWS CLI installed.
 
-> IMPORTANT 
-> Downloaded PowerShell scripts must be marked safe to before being used. 
-> To mark the scripts safe, use the `Unblock-File` cmdlet or  
+> **IMPORTANT** 
+> 
+> Downloaded PowerShell scripts must be marked safe before being used. 
+> To mark the downloaded scripts safe, use the `Unblock-File` cmdlet or  
 > right-click on the script file(s), then click **Properties** and then click **Unblock**.
+>
 
 Then run the following from PowerShell and follow the prompts to complete the configuration.
 
@@ -45,7 +47,7 @@ Then run the following from PowerShell and follow the prompts to complete the co
 
 ```
 
-When the script(s) complete, you must complete the Azure Sentinel data connector configuration in the Azure portal.
+When the scripts complete, you must complete the Azure Sentinel data connector configuration in the Azure portal.
 
 ## Troubleshooting
 
@@ -55,5 +57,5 @@ By default, a log is created in the directory where the script is executed.
 
 The `ConfigAwsConnector.ps1` script has two parameters:
 - `-LogPath` specifies a custom path to create the script activity log file.
-- `-AwsLogType` specifies the AWS log type to configure. Valid options are: "VPC", "CloudTrail", "GuardDuty". If this parameter is specified, the user will not be prompted for this information.
+- `-AwsLogType` specifies the AWS log type to configure. Valid options are: `VPC`, `CloudTrail`, `GuardDuty`. If this parameter is specified, the user will not be prompted for this information.
 

@@ -5,9 +5,9 @@ function Get-AwsConfig
         This function executes "aws configure" to ensure it is connected for subsequent commands.
     #>
 
-    Write-Log -Message "Setting up your AWS CLI environment..." -LogFileName $LogFileName -Severity Information -LinePadding 1
-    Write-Log -Message "Please ensure that the AWS CLI is connected:" -LogFileName $LogFileName -Severity Information -LinePadding 1
-    Write-Log -Message "Executing: aws configure" -LogFileName $LogFileName -Severity Verbose
+    Write-Log -Message "Setting up your AWS CLI environment..." -LogFileName $script:LogFileName  -Severity Information -LinePadding 1
+    Write-Log -Message "Please ensure that the AWS CLI is connected:" -LogFileName $script:LogFileName  -Severity Information -LinePadding 1
+    Write-Log -Message "Executing: aws configure" -LogFileName $script:LogFileName  -Severity Verbose
 
     aws configure
 }
@@ -18,9 +18,9 @@ function Write-RequiredConnectorDefinitionInfo
     .SYNOPSIS
         Write data needed to configure the Azure Sentinel Data Connector for user.
     #>
-    Write-Log -Message "Use the values below to configure the Amazon Web Service S3 data connector in the Azure Sentinel portal." -LogFileName $LogFileName -Severity Information -LinePadding 3
-    Write-Log -Message "Role arn: $roleArn" -LogFileName $LogFileName -Severity Information -LinePadding 1
-    Write-Log -Message "Sqs Url: $sqsUrl" -LogFileName $LogFileName -Severity Information
+    Write-Log -Message "Use the values below to configure the Amazon Web Service S3 data connector in the Azure Sentinel portal." -LogFileName $script:LogFileName -Severity Information -LinePadding 3
+    Write-Log -Message "Role arn: $script:roleArn" -LogFileName $script:LogFileName -Severity Information -LinePadding 1
+    Write-Log -Message "Sqs Url: $script:sqsUrl" -LogFileName $script:LogFileName -Severity Information
 }
 
 function Set-RetryAction
@@ -48,11 +48,11 @@ function Set-RetryAction
 
             if ($lastExitCode -ne 0)
             {
-                Write-Log -Message $error[0] -LogFileName $LogFileName -Severity Error
+                Write-Log -Message $error[0] -LogFileName $script:LogFileName  -Severity Error
 				if ($retryCount -lt $maxRetries)
 				{
 					Start-Sleep 10
-                    Write-Log -Message "Retrying..." -LogFileName $LogFileName -Severity Information
+                    Write-Log -Message "Retrying..." -LogFileName $script:LogFileName  -Severity Information
 				}
             }
 
@@ -60,7 +60,7 @@ function Set-RetryAction
 
     if ($lastExitCode -ne 0)
     {
-       Write-Log -Message "Action was unsuccessful after $MaxRetries attempts. Please review the errors and try again." -LogFileName $LogFileName -Severity Error
+       Write-Log -Message "Action was unsuccessful after $MaxRetries attempts. Please review the errors and try again." -LogFileName $script:LogFileName  -Severity Error
        exit
     }
 }
@@ -70,15 +70,19 @@ function Read-ValidatedHost
 <#
 .SYNOPSIS
     Gets validated user input and ensures that it is not empty. It will continue to prompt until valid text is provided.
-    Th 
+
 .PARAMETER Prompt
     Text that will be displayed to user
+
 .PARAMETER ValidationType
     Specify 'NotNull' to check for a non-null response and 'Confirm' to make sure the response is Y/Yes or N/No.
+
 .PARAMETER MinLength
     Specifies the minimum number of characters the input value can be. The default is 1.
+
 .PARAMETER MaxLength
     Specifies the maximum number of characters the input value can be. The default is 1024.
+
 #>
 [OutputType([string])]
 [CmdletBinding()]
@@ -93,8 +97,8 @@ param (
     $MinLength = 1,
     $MaxLength = 1024
 )
-    # Add a blank line before the prompt
-    Write-Host ""
+    # Indent the prompt by two spaces.
+    $Prompt = "  $Prompt"
     $returnString = ""
     if ($ValidationType -eq "NotNull")
     {
@@ -210,7 +214,7 @@ function Write-Log
             Time     = (Get-Date -f g)
             Message  = $Message
             Severity = $Severity
-        } | Export-Csv -Path $LogFileName -Append -NoTypeInformation -Force
+        } | Export-Csv -Path $LogFileName  -Append -NoTypeInformation -Force
     }
     catch 
     {

@@ -9,7 +9,6 @@ function Get-RoleArnPolicy
 [OutputType([string])]
 [CmdletBinding()]
 param (
-	[Parameter(position=0)]
 	[ValidateNotNullOrEmpty()]
 	[string]
 	$WorkspaceId
@@ -31,6 +30,7 @@ param (
                 }
             ]
         }"
+        
 	return $arnRolePolicy.Replace("'",'\"')
 }
 
@@ -49,12 +49,15 @@ function Get-S3AndRuleSQSPolicies
    [OutputType([string])]
    [CmdletBinding()]
    param (
-	   [ValidateNotNullOrEmpty()][string]
-	   $RoleArn,
-	   [ValidateNotNullOrEmpty()][string]
-	   $BucketName,
-	   [ValidateNotNullOrEmpty()][string]
-	   $SqsArn
+	   [ValidateNotNullOrEmpty()]
+       [string]
+	   $Role,
+	   [ValidateNotNullOrEmpty()]
+       [string]
+	   $Bucket,
+	   [ValidateNotNullOrEmpty()]
+       [string]
+	   $Sqs
    )  
 
 	$sqsPolicyForS3 = "
@@ -69,10 +72,10 @@ function Get-S3AndRuleSQSPolicies
 				'Service': 's3.amazonaws.com'
 			  },
 			  'Action': 'SQS:SendMessage',
-			  'Resource': '$SqsArn',
+			  'Resource': '$Sqs',
 			  'Condition': {
 				'ArnLike': {
-				  'aws:SourceArn': 'arn:aws:s3:*:*:$BucketName'
+				  'aws:SourceArn': 'arn:aws:s3:*:*:$Bucket'
 				}
 			  }
 		  },
@@ -80,7 +83,7 @@ function Get-S3AndRuleSQSPolicies
 		  'Sid': 'allow specific role to read/delete/change visibility of SQS messages and get queue url',
 		  'Effect': 'Allow',
 		  'Principal': {
-			'AWS': '$RoleArn'
+			'AWS': '$Role'
 		  },
 		  'Action': [
 			'SQS:ChangeMessageVisibility',
@@ -88,7 +91,7 @@ function Get-S3AndRuleSQSPolicies
 			'SQS:ReceiveMessage',
             'SQS:GetQueueUrl'
 		  ],
-		  'Resource': '$SqsArn'
+		  'Resource': '$Sqs'
 		}
 	  ]
 	}"
@@ -105,24 +108,21 @@ function Get-SqsEventNotificationConfig
 		Specifies the event notification name
 	.PARAMETER EventNotificationPrefix
 		Specifies the event notification prefix
-	.PARAMETER SqsArn
+	.PARAMETER Sqs
 		Specifies the Sqs ARN
    #>
 [OutputType([string])]
 [CmdletBinding()]
 param (
-	[Parameter(position=0)]
 	[ValidateNotNullOrEmpty()]
 	[string]
 	$EventNotificationName,
-	[Parameter(position=1)]
 	[ValidateNotNullOrEmpty()]
 	[string]
 	$EventNotificationPrefix,
-	[Parameter(position=2)]
 	[ValidateNotNullOrEmpty()]
 	[string]
-	$SqsArn
+	$Sqs
 )  
 
 	$sqsEventConfig = "
@@ -130,7 +130,7 @@ param (
 	   'QueueConfigurations': [
 			{
 			  'Id':'$EventNotificationName',
-			  'QueueArn': '$SqsArn',
+			  'QueueArn': '$Sqs',
 			  'Events': ['s3:ObjectCreated:*'],
 			  'Filter': {
 				'Key': {
@@ -158,20 +158,18 @@ function Get-RoleS3Policy
 	<#
 	.SYNOPSIS
 		Returns a customized Arn policy using the specified role ARN and bucket name
-	.PARAMETER RoleArn
+	.PARAMETER Role
 		Specifies the Role ARN
-	.PARAMETER BucketName
+	.PARAMETER Bucket
 		Specifies the S3 Bucket
    #>
 [OutputType([string])]
 [CmdletBinding()]
 param (
-	[Parameter(position=0)]
 	[ValidateNotNullOrEmpty()][string]
-	$RoleArn,
-	[Parameter(position=1)]
+	$Role,
 	[ValidateNotNullOrEmpty()][string]
-	$BucketName
+	$Bucket
 )  
 	
 	$s3PolicyForArn = "{
@@ -179,10 +177,10 @@ param (
             'Sid': 'Allow Arn read access S3 bucket',
             'Effect': 'Allow',
             'Principal': {
-                'AWS': '$RoleArn'
+                'AWS': '$Role'
             },
             'Action': ['s3:Get*','s3:List*'],
-            'Resource': 'arn:aws:s3:::$BucketName/*'
+            'Resource': 'arn:aws:s3:::$Bucket/*'
         }]}"
 			
 	return $s3PolicyForArn.Replace("'",'"')
@@ -194,14 +192,14 @@ function Get-CloudTrailKmsPolicy
 	<#
 	.SYNOPSIS
 		Returns a customized Kms policy for CloudTrail using the supplied Role Arn principal
-	.PARAMETER RoleArn
+	.PARAMETER Role
 		Specifies the ARN to use in the customized KMS policy
 	#>
 [CmdletBinding()]
 param (
 	[Parameter()]
 	[string]
-	$RoleArn
+	$Role
 )
 	$kmsPolicy = "{
 		'Statement': [
@@ -218,7 +216,7 @@ param (
             'Sid': 'Allow use of the key',
             'Effect': 'Allow',
             'Principal': {
-                'AWS': ['$RoleArn']
+                'AWS': ['$Role']
             },
             'Action': [
                 'kms:Encrypt',
@@ -248,7 +246,7 @@ function Get-OrganizationCloudTrailS3Policy
 	param (
 		[Parameter()]
 		[string]
-		$BucketName,
+		$Bucket,
 		[Parameter()]
 		[string]
 		$OrganizationId
@@ -263,7 +261,7 @@ function Get-OrganizationCloudTrailS3Policy
                 ]
             },
         'Action': 's3:PutObject',
-        'Resource': 'arn:aws:s3:::$BucketName/AWSLogs/$OrganizationId/*',
+        'Resource': 'arn:aws:s3:::$Bucket/AWSLogs/$OrganizationId/*',
         'Condition': {
             'StringEquals': {
                 's3:x-amz-acl': 'bucket-owner-full-control'
@@ -289,10 +287,10 @@ function Get-KmsS3Policy
 	param (
 		[Parameter()]
 		[string]
-		$BucketName,
+		$Name,
 		[Parameter()]
 		[string]
-		$KmsArn
+		$Kms
 	)
 
 	$s3PolicyForKms = "
@@ -304,7 +302,7 @@ function Get-KmsS3Policy
                 'Service': 'cloudtrail.amazonaws.com'
             },
             'Action': 's3:PutObject',
-            'Resource': 'arn:aws:s3:::$BucketName/*',
+            'Resource': 'arn:aws:s3:::$Name/*',
             'Condition': {
                 'StringNotEquals': {
                     's3:x-amz-server-side-encryption': 'aws:kms'
@@ -318,10 +316,10 @@ function Get-KmsS3Policy
                 'Service': 'cloudtrail.amazonaws.com'
             },
             'Action': 's3:PutObject',
-            'Resource': 'arn:aws:s3:::$BucketName/*',
+            'Resource': 'arn:aws:s3:::$Name/*',
             'Condition': {
                 'StringNotEquals': {
-                    's3:x-amz-server-side-encryption-aws-kms-key-id': '$KmsArn'
+                    's3:x-amz-server-side-encryption-aws-kms-key-id': '$Kms'
                 }
             }
 		}
@@ -343,13 +341,13 @@ function Get-RoleAndCloudTrailS3Policy
 	param (
 		[Parameter()]
 		[string]
-		$BucketName,
+		$Name,
 		[Parameter()]
 		[string]
-		$RoleArn,
+		$Role,
 		[Parameter()]
 		[string]
-		$CallerAccount
+		$Account
 	)
 	 $s3PolicyForRoleAndCloudTrail = "{
 	 'Statement': [
@@ -357,10 +355,10 @@ function Get-RoleAndCloudTrailS3Policy
             'Sid': 'Allow Arn read access S3 bucket',
             'Effect': 'Allow',
             'Principal': {
-                'AWS': '$RoleArn'
+                'AWS': '$Role'
             },
             'Action': ['s3:Get*','s3:List*'],
-            'Resource': 'arn:aws:s3:::$BucketName/*'
+            'Resource': 'arn:aws:s3:::$Name/*'
         },
 		{
             'Sid': 'AWSCloudTrailAclCheck20150319',
@@ -369,7 +367,7 @@ function Get-RoleAndCloudTrailS3Policy
                 'Service': 'cloudtrail.amazonaws.com'
             },
             'Action': 's3:GetBucketAcl',
-            'Resource': 'arn:aws:s3:::$BucketName'
+            'Resource': 'arn:aws:s3:::$Name'
         },
         {
             'Sid': 'AWSCloudTrailWrite20150319',
@@ -378,7 +376,7 @@ function Get-RoleAndCloudTrailS3Policy
                 'Service': 'cloudtrail.amazonaws.com'
             },
             'Action': 's3:PutObject',
-            'Resource': 'arn:aws:s3:::$BucketName/AWSLogs/$CallerAccount/*',
+            'Resource': 'arn:aws:s3:::$Name/AWSLogs/$Account/*',
             'Condition': {
                 'StringEquals': {
                     's3:x-amz-acl': 'bucket-owner-full-control'
@@ -394,15 +392,17 @@ function New-CloudTrailS3Policy
 	.SYNOPSIS
 		Returns customized S3 Policy for CloudTrail logs
 	#>
-	$s3RequiredPolicy = Get-RoleAndCloudTrailS3Policy -BucketName $bucketName -RoleArn $roleArn -CallerAccount $callerAccount
+	$s3RequiredPolicy = Get-RoleAndCloudTrailS3Policy -Name $script:bucketName -Role $script:roleArn -Account $script:callerAccount
 	$s3RequiredPolicyObject = $s3RequiredPolicy | ConvertFrom-Json 
-	if ($organizationCloudTrailConfirmation -ne 'n')
+	
+    if ($script:organizationCloudTrailConfirmation -ne 'n')
 	{
-		$s3RequiredPolicyObject.Statement += (Get-OrganizationCloudTrailS3Policy -BucketName $bucketName -OrganizationId $organizationId | ConvertFrom-Json)
+		$s3RequiredPolicyObject.Statement += (Get-OrganizationCloudTrailS3Policy -Bucket $script:bucketName -OrganizationId $script:organizationId | ConvertFrom-Json)
 	}
-	if ($kmsConfirmation -eq 'y')
+	
+    if ($kmsConfirmation -eq 'y')
 	{
-		$s3RequiredPolicyObject.Statement += (Get-KmsS3Policy -BucketName $bucketName -KmsArn $kmsArn | ConvertFrom-Json)
+		$s3RequiredPolicyObject.Statement += (Get-KmsS3Policy -Name $script:bucketName -Kms $script:kmsArn | ConvertFrom-Json)
 	}
 
 	return $s3RequiredPolicyObject | ConvertTo-Json -Depth 5
@@ -418,25 +418,25 @@ function Get-RoleAndGuardDutyS3Policy
     .SYNOPSIS 
         Creates a S3 Policy for GuardDuty based on specified bucket name, role ARN, and Kms ARN
 
-    .PARAMETER RoleArn
+    .PARAMETER Role
 		Specifies the Role ARN
-	.PARAMETER BucketName
+	.PARAMETER Bucket
 		Specifies the S3 Bucket
-    .PARAMETER KmsArn
+    .PARAMETER Kms
         Specifies the KMS ARN
     #>
     [OutputType([string])]
     [CmdletBinding()]
     param (
-        [Parameter(position=0)]
+        [Parameter()]
         [ValidateNotNullOrEmpty()][string]
-        $RoleArn,
-        [Parameter(position=1)]
+        $Role,
+        [Parameter()]
         [ValidateNotNullOrEmpty()][string]
-        $BucketName,
-        [Parameter(position=2)]
+        $Bucket,
+        [Parameter()]
         [ValidateNotNullOrEmpty()][string]
-        $KmsArn
+        $Kms
     )  
     $s3PolicyForRoleAndGuardDuty = "{
 	 'Statement': [
@@ -444,10 +444,10 @@ function Get-RoleAndGuardDutyS3Policy
             'Sid': 'Allow Arn read access S3 bucket',
             'Effect': 'Allow',
             'Principal': {
-                'AWS': '$RoleArn'
+                'AWS': '$Role'
             },
             'Action': ['s3:Get*','s3:List*'],
-            'Resource': 'arn:aws:s3:::$BucketName/*'
+            'Resource': 'arn:aws:s3:::$Bucket/*'
         },
 		{
             'Sid': 'Allow GuardDuty to use the getBucketLocation operation',
@@ -456,7 +456,7 @@ function Get-RoleAndGuardDutyS3Policy
                 'Service': 'guardduty.amazonaws.com'
             },
             'Action': 's3:GetBucketLocation',
-            'Resource': 'arn:aws:s3:::$BucketName'
+            'Resource': 'arn:aws:s3:::$Bucket'
         },
         {
             'Sid': 'Allow GuardDuty to upload objects to the bucket',
@@ -465,7 +465,7 @@ function Get-RoleAndGuardDutyS3Policy
                 'Service': 'guardduty.amazonaws.com'
             },
             'Action': 's3:PutObject',
-            'Resource': 'arn:aws:s3:::$BucketName/*'
+            'Resource': 'arn:aws:s3:::$Bucket/*'
         },
         {
             'Sid': 'Deny unencrypted object uploads. This is optional',
@@ -474,7 +474,7 @@ function Get-RoleAndGuardDutyS3Policy
                 'Service': 'guardduty.amazonaws.com'
             },
             'Action': 's3:PutObject',
-            'Resource': 'arn:aws:s3:::$BucketName/*',
+            'Resource': 'arn:aws:s3:::$Bucket/*',
             'Condition': {
                 'StringNotEquals': {
                     's3:x-amz-server-side-encryption': 'aws:kms'
@@ -488,10 +488,10 @@ function Get-RoleAndGuardDutyS3Policy
                 'Service': 'guardduty.amazonaws.com'
             },
             'Action': 's3:PutObject',
-            'Resource': 'arn:aws:s3:::$BucketName/*',
+            'Resource': 'arn:aws:s3:::$Bucket/*',
             'Condition': {
                 'StringNotEquals': {
-                    's3:x-amz-server-side-encryption-aws-kms-key-id': '$KmsArn'
+                    's3:x-amz-server-side-encryption-aws-kms-key-id': '$Kms'
                 }
             }
         },
@@ -500,7 +500,7 @@ function Get-RoleAndGuardDutyS3Policy
             'Effect': 'Deny',
             'Principal': '*',
             'Action': 's3:*',
-            'Resource': 'arn:aws:s3:::$BucketName/*',
+            'Resource': 'arn:aws:s3:::$Bucket/*',
             'Condition': {
                 'Bool': {
                     'aws:SecureTransport': 'false'
@@ -515,15 +515,14 @@ function Get-GuardDutyAndRoleKmsPolicy
 	<#
     .SYNOPSIS 
         Creates a customized KMS Policy for GuardDuty based on specified role ARN
-    .PARAMETER RoleArn
+    .PARAMETER Arn
 		Specifies the Role ARN
     #>
     [OutputType([string])]
     [CmdletBinding()]
     param (
-        [Parameter(position=0)]
         [ValidateNotNullOrEmpty()][string]
-        $RoleArn
+        $Arn
     )
 
     $kmsPolicy = "{
@@ -541,7 +540,7 @@ function Get-GuardDutyAndRoleKmsPolicy
             'Sid': 'Allow use of the key',
             'Effect': 'Allow',
             'Principal': {
-                'AWS': ['$RoleArn']
+                'AWS': ['$Arn']
             },
             'Action': [
                 'kms:Encrypt',

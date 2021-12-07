@@ -52,13 +52,13 @@ if ($null -eq (Get-Command "aws" -ErrorAction SilentlyContinue))
 
 # Setup basic logging
 $TimeStamp = Get-Date -Format MMddHHmm 
-$LogFileName = '{0}-{1}.csv' -f "AwsS3", $TimeStamp
-$LogFileName = Join-Path $LogPath $LogFileName
+$script:LogFileName = '{0}-{1}.csv' -f "AwsS3", $TimeStamp
+$script:LogFileName = Join-Path $LogPath $script:LogFileName
 
-Write-Log -Message "Starting ConfigAwsConnector at: $(Get-Date)" -LogFileName $LogFileName -Severity Information -LinePadding 2
-Write-Log -Message "Log created: $LogFileName" -LogFileName $LogFileName -Severity Information -Indent 2
+Write-Log -Message "Starting ConfigAwsConnector at: $(Get-Date)" -LogFileName $script:LogFileName -Severity Information -LinePadding 2
+Write-Log -Message "Log created: $script:LogFileName" -LogFileName $script:LogFileName -Severity Information -Indent 2
 
-Write-Log -Message "To begin you will choose the AWS logs to configure." -LogFileName $LogFileName -Severity Information -LinePadding 2
+Write-Log -Message "To begin you will choose the AWS logs to configure." -LogFileName $script:LogFileName -Severity Information -LinePadding 2
 
 # If LogType parameter was not specified, prompt the user to choose.
 if ($AwsLogType -eq "")
@@ -79,7 +79,7 @@ switch ($AwsLogType)
     "VPC" {New-VpcFlowDataConnector}
     "CloudTrail" {New-CloudTrailDataConnector}
     "GuardDuty" {New-GuardDutyDataConnector }
-    default {Write-Log -Message "Invalid log type" -LogFileName $LogFileName -Severity Error; exit}
+    default {Write-Log -Message "Invalid log type" -LogFileName $script:LogFileName -Severity Error; exit}
 }
 
 Write-Host -NoNewLine `n`n'Press any key to continue...'
