@@ -3,7 +3,7 @@
   "contentVersion": "1.0.0.0",
 
   "parameters": {
-    "CarbonBlack_CustomConnector_Name": {
+    "CustomConnectorName": {
       "defaultValue": "CarbonBlackConnector",
       "type": "string",
       "metadata": {
@@ -14,7 +14,7 @@
       "defaultValue": "https://{CarbonblackBaseURL}",
       "type": "string",
       "metadata": {
-        "description": "enter the Carbon Black base URL (ex: https://defense.conferdeploy.net)"
+        "description": "Enter the Carbon Black Cloud base URL (ex: https://defense.conferdeploy.net)"
       }
     },
     "CarbonBlack-TakeDeviceActionFromTeams_Playbook_Name": {
@@ -43,32 +43,33 @@
       "defaultValue": "OrganizationKey",
       "type": "string",
       "metadata": {
-        "description": "Carbon Black Org Key"
+        "description": "Carbon Black Cloud Organization Key"
       }
     },
     "PolicyId": {
       "defaultValue": 0,
       "type": "int",
       "metadata": {
-        "description": "(Optional: can be configured in the playbook) For playbook which allows update policy, supply the policy ID from Carbon Black"
+        "description": "(Optional: Can be configured in the playbook) For playbook which allows update policy, supply the policy ID from Carbon Black"
       }
     },
     "Teams_GroupId": {
       "defaultValue": "Teams_GroupId",
       "type": "string",
       "metadata": {
-        "description": "(Optional: can be configured in the playbook) For playbook which sends an adaptive card to response from Teams. This is the Group ID of the Team channel"
+        "description": "Teams Channel Group Id (Optional: Can be configured in the playbook) For playbook to send adaptive card responses from Teams. "
       }
     },
     "Teams_ChannelId": {
       "defaultValue": "Teams_ChannelId",
       "type": "string",
       "metadata": {
-        "description": "(Optional: can be configured in the playbook) For playbook which sends an adaptive card to response from Teams. This is the Channel ID of the Team channel"
+        "description": "Teams Channel Id (Optional: Can be configured in the playbook) For playbook to send adaptive card responses from Teams. "
       }
     }
   },
-  "variables": {},
+  "variables": { 
+  },
   "resources": [
     {
       "name": "CarbonBlack_Customconnector_LinkedTemplate",
@@ -81,7 +82,7 @@
         },
         "parameters": {
           "CustomConnectorName": {
-            "value": "[parameters('CarbonBlack_CustomConnector_Name')]"
+            "value": "[parameters('CustomConnectorName')]"
           },
           "Service EndPoint": {
             "value": "[parameters('Service EndPoint')]"
@@ -106,7 +107,7 @@
             "Value": "[parameters('CarbonBlack-TakeDeviceActionFromTeams_Playbook_Name')]"
           },
           "CustomConnectorName": {
-            "Value": "[parameters('CarbonBlack_CustomConnector_Name')]"
+            "Value": "[parameters('CustomConnectorName')]"
           },
           "OrganizationKey": {
             "Value": "[parameters('OrganizationKey')]"
@@ -133,14 +134,14 @@
       "properties": {
         "mode": "Incremental",
         "templateLink": {
-          "uri": "https://raw.githubusercontent.com/Azure/Azure-Sentinel/master/Solutions/CarbonBlack/Playbooks/CarbonBlack-DeviceEnrichment/azuredeploy.json"
+          "uri": "https://raw.githubusercontent.com/joelst/Azure-Sentinel/hv/Solutions/CarbonBlack/Playbooks/CarbonBlack-DeviceEnrichment/azuredeploy.json"
         },
         "parameters": {
           "PlaybookName": {
             "Value": "[parameters('CarbonBlack-DeviceEnrichment_Playbook_Name')]"
           },
           "CustomConnectorName": {
-            "Value": "[parameters('CarbonBlack_CustomConnector_Name')]"
+            "Value": "[parameters('CustomConnectorName')]"
           },
           "OrganizationKey": {
             "Value": "[parameters('OrganizationKey')]"
@@ -158,14 +159,14 @@
       "properties": {
         "mode": "Incremental",
         "templateLink": {
-          "uri": "https://raw.githubusercontent.com/Azure/Azure-Sentinel/master/Solutions/CarbonBlack/Playbooks/CarbonBlack-QuarantineDevice/azuredeploy.json"
+          "uri": "https://raw.githubusercontent.com/joelst/Azure-Sentinel/hv/Solutions/CarbonBlack/Playbooks/CarbonBlack-QuarantineDevice/azuredeploy.json"
         },
         "parameters": {
           "PlaybookName": {
             "Value": "[parameters('CarbonBlack-QuarantineDevice_Playbook_Name')]"
           },
           "CustomConnectorName": {
-            "Value": "[parameters('CarbonBlack_CustomConnector_Name')]"
+            "Value": "[parameters('CustomConnectorName')]"
           },
           "OrganizationKey": {
             "Value": "[parameters('OrganizationKey')]"
