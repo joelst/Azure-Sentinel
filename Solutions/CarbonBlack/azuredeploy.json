@@ -10,7 +10,7 @@
         "description": "Name of the custom connector"
       }
     },
-    "Service EndPoint": {
+    "Service Endpoint": {
       "defaultValue": "https://{CarbonblackBaseURL}",
       "type": "string",
       "metadata": {
@@ -21,9 +21,8 @@
       "defaultValue": "CarbonBlack-TakeDeviceActionFromTeams",
       "type": "string",
       "metadata": {
-        "description": "Playbook name "
+        "description": "Playbook name"
       }
-
     },
     "CarbonBlack-DeviceEnrichment_Playbook_Name": {
       "defaultValue": "CarbonBlack-DeviceEnrichment",
@@ -59,11 +58,7 @@
       "metadata": {
         "description": "Teams Channel Group Id (Optional: Can be configured in the playbook) For playbook to send adaptive card responses from Teams."
       }
-    },
-    "CustomConnectorName": {
-      "defaultValue": "[parameters('CarbonBlack_CustomConnector_Name')]",
-      "type": "string"
-    },
+    },       
     "Teams_ChannelId": {
       "defaultValue": "Teams_ChannelId",
       "type": "string",
@@ -82,11 +77,11 @@
       "properties": {
         "mode": "Incremental",
         "templateLink": {
-          "uri": "https://raw.githubusercontent.com/joelst/Azure-Sentinel/hv/Solutions/CarbonBlack/azuredeploy.json"
+          "uri": "https://raw.githubusercontent.com/joelst/Azure-Sentinel/hv/Solutions/CarbonBlack/Data%20Connectors/azuredeploy.json"
         },
         "parameters": {
           "CustomConnectorName": {
-            "value": "[parameters('CustomConnectorName')]"
+            "value": "[parameters('CarbonBlack_CustomConnector_Name')]"
           },
           "Service EndPoint": {
             "value": "[parameters('Service EndPoint')]"
@@ -111,7 +106,7 @@
             "Value": "[parameters('CarbonBlack-TakeDeviceActionFromTeams_Playbook_Name')]"
           },
           "CustomConnectorName": {
-            "Value": "[parameters('CustomConnectorName')]"
+            "Value": "[parameters('CarbonBlack_CustomConnector_Name')]"
           },
           "OrganizationKey": {
             "Value": "[parameters('OrganizationKey')]"
@@ -145,7 +140,7 @@
             "Value": "[parameters('CarbonBlack-DeviceEnrichment_Playbook_Name')]"
           },
           "CustomConnectorName": {
-            "Value": "[parameters('CustomConnectorName')]"
+            "Value": "[parameters('CarbonBlack_CustomConnector_Name')]"
           },
           "OrganizationKey": {
             "Value": "[parameters('OrganizationKey')]"
@@ -170,7 +165,7 @@
             "Value": "[parameters('CarbonBlack-QuarantineDevice_Playbook_Name')]"
           },
           "CustomConnectorName": {
-            "Value": "[parameters('CustomConnectorName')]"
+            "Value": "[parameters('CarbonBlack_CustomConnector_Name')]"
           },
           "OrganizationKey": {
             "Value": "[parameters('OrganizationKey')]"
