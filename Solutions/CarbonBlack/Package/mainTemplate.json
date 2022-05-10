@@ -79,7 +79,7 @@
             "defaultValue": "https://{CarbonblackBaseURL}",
             "type": "string",
             "metadata": {
-                "description": "Carbon Black base URL (ex: https://defense.conferdeploy.net)"
+                "description": "Carbon Black Cloud base URL (ex: https://defense.conferdeploy.net)"
             }
         },
         "CarbonBlack-TakeDeviceActionFromTeams_Playbook_Name": {
@@ -103,6 +103,10 @@
             "metadata": {
                 "description": "Playbook name"
             }
+        },
+        "CustomConnectorName":{
+            "defaultValue": "[parameters('CarbonBlack_CustomConnector_Name')]",
+            "type": "string",
         },
         "OrganizationKey": {
             "defaultValue": "OrganizationKey",

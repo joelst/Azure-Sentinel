@@ -177,7 +177,7 @@
                 "name": "playbook1-text",
                 "type": "Microsoft.Common.TextBlock",
                 "options": {
-                  "text": "This connector is used to perform actions on alerts, devices, and threats using CarbonBlack cloud endpoint API."
+                  "text": "This connector performs actions on alerts, devices, and threats using CarbonBlack cloud endpoint API."
                 }
               },
               {
@@ -201,7 +201,7 @@
                 "constraints": {
                   "required": true,
                   "regex": "[\\w\\W]{1,256}$",
-                  "validationMessage": "Please enter the Carbon Black base URL (ex: https://defense.conferdeploy.net)"
+                  "validationMessage": "Please enter the Carbon Black Cloud base URL (ex: https://defense.conferdeploy.net)"
                 }
               }
             ]
@@ -289,7 +289,7 @@
                 "name": "playbook3-text",
                 "type": "Microsoft.Common.TextBlock",
                 "options": {
-                  "text": "This playbook used to enrich sentinel incident with device information."
+                  "text": "This playbook used to enrich a Sentinel incident with device information."
                 }
               },
               {
@@ -315,7 +315,7 @@
                 "name": "playbook4-text",
                 "type": "Microsoft.Common.TextBlock",
                 "options": {
-                  "text": "This playbook automatically quarantine the device and enrich sentinel incident with device information."
+                  "text": "This playbook automatically quarantines a device and enriches Sentinel incident with device information."
                 }
               },
               {

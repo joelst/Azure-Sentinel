@@ -34,7 +34,6 @@
   
 [![Deploy to Azure](https://aka.ms/deploytoazurebutton)](https://portal.azure.com/#create/Microsoft.Template/uri/https%3A%2F%2Fraw.githubusercontent.com%2Fjoelst%2FAzure-Sentinel%2Fhv%2FPlaybooks%2FCarbonBlack%2FSolutions%2FCarbonBlack-TakeDeviceActionFromTeams%2Fazuredeploy.json) [![Deploy to Azure](https://aka.ms/deploytoazuregovbutton)](https://portal.azure.us/#create/Microsoft.Template/uri/https%3A%2F%2Fraw.githubusercontent.com%2Fjoelst%2FAzure-Sentinel%2Fhv%2FSolutions%2FCarbonBlack%2FPlaybooks%2FCarbonBlack-TakeDeviceActionFromTeams%2Fazuredeploy.json)
 
-
 ### Post-Deployment instructions
 
 #### Authorize connections
@@ -46,7 +45,7 @@ Once deployment is complete, you will need to authorize each connection.
 3. Click Authorize
 4. Sign in
 5. Click Save
-6. Repeat steps two and three for the Carbon Black connector Connection to authorize connector API of the playbook (For authorizing the Carbon Black API connection, API Key needs to be provided. API Key Value is the combination of API Key / API ID)
+6. Repeat steps two and three for the Carbon Black connector connection to authorize connector API of the playbook (For authorizing the Carbon Black API connection, API Key needs to be provided. API Key Value is the combination of API Key / API ID)
 #### Configurations in Sentinel
 
 1. In Sentinel analytical rules should be configured to trigger an incident with risky device.

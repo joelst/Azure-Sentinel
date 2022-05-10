@@ -3,7 +3,7 @@
   "contentVersion": "1.0.0.0",
 
   "parameters": {
-    "CustomConnectorName": {
+    "CarbonBlack_CustomConnector_Name": {
       "defaultValue": "CarbonBlackConnector",
       "type": "string",
       "metadata": {
@@ -60,6 +60,10 @@
         "description": "Teams Channel Group Id (Optional: Can be configured in the playbook) For playbook to send adaptive card responses from Teams."
       }
     },
+    "CustomConnectorName": {
+      "defaultValue": "[parameters('CarbonBlack_CustomConnector_Name')]",
+      "type": "string"
+    },
     "Teams_ChannelId": {
       "defaultValue": "Teams_ChannelId",
       "type": "string",
@@ -68,7 +72,7 @@
       }
     }
   },
-  "variables": { 
+  "variables": {
   },
   "resources": [
     {
