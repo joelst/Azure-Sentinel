@@ -2,7 +2,7 @@
     "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
     "contentVersion": "1.0.0.1",
     "metadata": {
-        "author": "Eli Forbes v-eliforbes@microsoft.com and joelst@microsoft.com",
+        "author": "Eli Forbes v-eliforbes@microsoft.com",
         "comments": "VMWare Carbon Black Solution template"
     },
     "parameters": {
