@@ -4,11 +4,11 @@
     Version:        1.0
     Author:         Microsoft
     Last Modified:  5/19/2020
-    Comment:        Inital Release
+    Comment:        Initial Release
 
     DESCRIPTION
     This Function App calls the VMware Carbon Black Cloud REST API (https://developer.carbonblack.com/reference/carbon-black-cloud/cb-defense/latest/rest-api/) to pull the Carbon Black
-    Audit, Notification and Event logs. The response from the CarbonBlack API is recieved in JSON format. This function will build the signature and authorization header
+    Audit, Notification and Event logs. The response from the CarbonBlack API is received in JSON format. This function will build the signature and authorization header
     needed to post the data to the Log Analytics workspace via the HTTP Data Connector API. The Function App will post each log type to their individual tables in Log Analytics, for example,
     CarbonBlackAuditLogs_CL, CarbonBlackNotifications_CL and CarbonBlackEvents_CL.
 #>
@@ -27,7 +27,7 @@ if ($Timer.IsPastDue) {
     Write-Host "PowerShell timer is running late!"
 }
 
-Function EventsFieldsMapping {
+Function New-EventsFieldsMapping {
     Param (
         $events
     )
@@ -68,7 +68,7 @@ Function EventsFieldsMapping {
     }
 }
 
-Function AlertsFieldsMapping {
+Function New-AlertsFieldsMapping {
     Param (
         $alerts
     )
@@ -167,7 +167,7 @@ Function Expand-GZipFile {
 }
 
 # The function will call the Carbon Black API and retrieve the Audit, Event, and Notifications Logs
-function CarbonBlackAPI()
+function Get-CarbonBlackApi
 {
     $workspaceId = $env:workspaceId
     $workspaceSharedKey = $env:workspaceKey
@@ -242,8 +242,8 @@ function CarbonBlackAPI()
                 if (-not([string]::IsNullOrWhiteSpace($AuditLogsJSON)))
                 {
                     $responseObj = (ConvertFrom-Json $AuditLogsJSON)
-                    $status = Post-LogAnalyticsData -customerId $workspaceId -sharedKey $workspaceSharedKey -body ([System.Text.Encoding]::UTF8.GetBytes($AuditLogsJSON)) -logType $AuditLogTable;
-                    Write-Host("$($responseObj.count) new Carbon Black Audit Events as of $([DateTime]::UtcNow). Pushed data to Azure sentinel Status code:$($status)")
+                    $status = Send-LogAnalyticsData -customerId $workspaceId -sharedKey $workspaceSharedKey -body ([System.Text.Encoding]::UTF8.GetBytes($AuditLogsJSON)) -logType $AuditLogTable;
+                    Write-Host("$($responseObj.count) New Carbon Black Audit Events as of $([DateTime]::UtcNow). Pushed data to Azure sentinel Status code:$($status)")
                 }
                 else
                 {
@@ -252,32 +252,32 @@ function CarbonBlackAPI()
             }
             else
             {
-                Write-Host "AuditLogsResult API status failed , Please check."
+                Write-Host "AuditLogsResult API status failed, Please check."
             }
         }
         else
         {
-            Write-Warning "'Audit' was not selected as a LogType, therefore audit logs will not be ingested to the workspace."
+            Write-Warning "'Audit' was not selected as a LogType, audit logs will not be ingested into the workspace."
         }
     }
     else
     {
-        Write-Warning "API credentials were not defined, therefore audit logs will not be ingested to workspace."
+        Write-Warning "API credentials were not defined, audit logs will not be ingested to workspace."
     }
 
     if(-not([string]::IsNullOrWhiteSpace($s3BucketName)) -and -not([string]::IsNullOrWhiteSpace($AWSAccessKeyId)) -and -not([string]::IsNullOrWhiteSpace($AWSSecretAccessKey)) -and -not([string]::IsNullOrWhiteSpace($OrgKey)))
     {
         if($LogTypeArr -contains "event")
         {
-            GetBucketDetails -s3BucketName $s3BucketName -prefixFolder $EventprefixFolder -tableName $EventLogTable -logtype "event"
+            Get-BucketDetails -s3BucketName $s3BucketName -prefixFolder $EventprefixFolder -tableName $EventLogTable -logtype "event"
         }
         else{
-            Write-Warning "'Event' was not selected as a LogType, therefore event logs will not be ingested to the workspace."
+            Write-Warning "'Event' was not selected as a LogType, event logs will not be ingested to the workspace."
         }
     }
     else
     {
-        Write-Warning "S3Bucket credentials were not defined, therefore event logs will not be ingested to workspace."
+        Write-Warning "S3Bucket credentials were not defined, event logs will not be ingested to workspace."
     }
 
 
@@ -287,7 +287,7 @@ function CarbonBlackAPI()
         {
             if(-not([string]::IsNullOrWhiteSpace($s3BucketName)) -and -not([string]::IsNullOrWhiteSpace($AWSAccessKeyId)) -and -not([string]::IsNullOrWhiteSpace($AWSSecretAccessKey)) -and -not([string]::IsNullOrWhiteSpace($OrgKey)))
             {
-                $alerts = GetBucketDetails -s3BucketName $s3BucketName -prefixFolder $AlertprefixFolder -tableName $NotificationTable -logtype "alert"
+                $alerts = Get-BucketDetails -s3BucketName $s3BucketName -prefixFolder $AlertprefixFolder -tableName $NotificationTable -logtype "alert"
                 Write-Host "$($alerts.count) new Carbon Black Alerts as of $([DateTime]::UtcNow)were found and pushed."
             }
         }
@@ -301,7 +301,7 @@ function CarbonBlackAPI()
                 if (-not([string]::IsNullOrWhiteSpace($NotifLogJson)))
                 {
                     $responseObj = (ConvertFrom-Json $NotifLogJson)
-                    $status = Post-LogAnalyticsData -customerId $workspaceId -sharedKey $workspaceSharedKey -body ([System.Text.Encoding]::UTF8.GetBytes($NotifLogJson)) -logType $NotificationTable;
+                    $status = Send-LogAnalyticsData -customerId $workspaceId -sharedKey $workspaceSharedKey -body ([System.Text.Encoding]::UTF8.GetBytes($NotifLogJson)) -logType $NotificationTable;
                     Write-Host("$($responseObj.count) new Carbon Black Notifications as of $([DateTime]::UtcNow). Pushed data to Azure sentinel Status code:$($status)")
                 }
                 else
@@ -340,7 +340,7 @@ function Build-Signature ($customerId, $sharedKey, $date, $contentLength, $metho
 }
 
 # Create the function to create and post the request
-function Post-LogAnalyticsData($customerId, $sharedKey, $body, $logType)
+function Send-LogAnalyticsData($customerId, $sharedKey, $body, $logType)
 {
     $TimeStampField = "eventTime"
     $method = "POST";
@@ -360,7 +360,7 @@ function Post-LogAnalyticsData($customerId, $sharedKey, $body, $logType)
     return $response.StatusCode
 }
 
-function GetBucketDetails {
+function Get-BucketDetails {
     param (
         $s3BucketName,
         $prefixFolder,
@@ -368,7 +368,7 @@ function GetBucketDetails {
         $logtype
     )
 
-    IF ($Null -ne $s3BucketName) {
+    if ($Null -ne $s3BucketName) {
         Set-AWSCredentials -AccessKey $AWSAccessKeyId -SecretKey $AWSSecretAccessKey
 
         while ($startTime -le $now) {
@@ -397,11 +397,11 @@ function GetBucketDetails {
 
                         if($logtype -eq "event")
                         {
-                            EventsFieldsMapping -events $logevents
+                            New-EventsFieldsMapping -events $logevents
                         }
                         if($logtype -eq "alert")
                         {
-                            AlertsFieldsMapping -alerts $logevents
+                            New-AlertsFieldsMapping -alerts $logevents
                         }
                         $AllEvents.Add($logevents)
                     }
@@ -412,7 +412,7 @@ function GetBucketDetails {
                     {
                         $responseObj = (ConvertFrom-Json $EventLogsJSON)
                         try {
-                            $status = Post-LogAnalyticsData -customerId $workspaceId -sharedKey $workspaceSharedKey -body ([System.Text.Encoding]::UTF8.GetBytes($EventLogsJSON)) -logType $tableName;
+                            $status = Send-LogAnalyticsData -customerId $workspaceId -sharedKey $workspaceSharedKey -body ([System.Text.Encoding]::UTF8.GetBytes($EventLogsJSON)) -logType $tableName;
                             Write-Host "Pushed events to $($tableName)"
                         }
                         catch {
@@ -432,7 +432,7 @@ function GetBucketDetails {
 }
 
 # Execute the Function to Pull CarbonBlack data and Post to the Log Analytics Workspace
-CarbonBlackAPI
+Get-CarbonBlackAPI
 
 # Write an information log with the current time.
 Write-Host "PowerShell timer trigger function ran! TIME: $currentUTCtime"
