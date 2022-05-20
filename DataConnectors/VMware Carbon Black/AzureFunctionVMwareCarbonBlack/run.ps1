@@ -343,9 +343,10 @@ function Get-CarbonBlackApi {
         if ( $eventLogsResult.results -ne "") {
             $EventLogsJSON = $eventLogsResult.results | ConvertTo-Json -Depth 5
             if (-not([string]::IsNullOrWhiteSpace($EventLogsJSON))) {
-                $EventLogsJSON | Out-File C:\temp\CBresponse.json
+                # Debugging output format.
+                # $EventLogsJSON | Out-File C:\temp\CBresponse.json
                 $responseObj = (ConvertFrom-Json $AuditLogsJSON)
-                #$status = Send-LogAnalyticsData -customerId $workspaceId -sharedKey $workspaceSharedKey -body ([System.Text.Encoding]::UTF8.GetBytes($EventLogsJSON)) -logType $EventLogTable;
+                $status = Send-LogAnalyticsData -customerId $workspaceId -sharedKey $workspaceSharedKey -body ([System.Text.Encoding]::UTF8.GetBytes($EventLogsJSON)) -logType $EventLogTable;
                 Write-Output $responseObj
                 Write-Host("$($responseObj.count) New Carbon Black Events as of $([DateTime]::UtcNow). Pushed data to Microsoft Sentinel status code:$($status)")
             }
