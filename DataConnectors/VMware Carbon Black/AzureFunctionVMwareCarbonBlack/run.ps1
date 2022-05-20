@@ -343,7 +343,7 @@ function Get-CarbonBlackApi {
         if ( $eventLogsResult.results -ne "") {
             $EventLogsJSON = $eventLogsResult.results | ConvertTo-Json -Depth 5
             if (-not([string]::IsNullOrWhiteSpace($EventLogsJSON))) {
-                $EventLogsJSON | Out-File C:\Users\dcontreras\Downloads\CBresponse.json
+                $EventLogsJSON | Out-File C:\temp\CBresponse.json
                 $responseObj = (ConvertFrom-Json $AuditLogsJSON)
                 #$status = Send-LogAnalyticsData -customerId $workspaceId -sharedKey $workspaceSharedKey -body ([System.Text.Encoding]::UTF8.GetBytes($EventLogsJSON)) -logType $EventLogTable;
                 Write-Output $responseObj
