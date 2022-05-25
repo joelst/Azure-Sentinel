@@ -1,20 +1,24 @@
 <#
-    Title:          VMware Carbon Black Cloud Data Connector
+    Title:          VMware Carbon Black Cloud data connector
     Language:       PowerShell
     Version:        1.1
     Author:         Microsoft
     Last Modified:  5/19/2022
-    Comment:        Initial Release
+    Comment:        Release to include option for API Event Logs
 
     DESCRIPTION
     This Function App calls the VMware Carbon Black Cloud REST API (https://developer.carbonblack.com/reference/carbon-black-cloud/cb-defense/latest/rest-api/) to pull the Carbon Black
     Audit, Notification and Event logs. The response from the CarbonBlack API is received in JSON format. This function will build the signature and authorization header
     needed to post the data to the Log Analytics workspace via the HTTP Data Connector API. The Function App will post each log type to their individual tables in Log Analytics, for example,
     CarbonBlackAuditLogs_CL, CarbonBlackNotifications_CL and CarbonBlackEvents_CL.
+
+    Carbon Black recommends using the Event Forwarder with S3 bucket instead of the the API to retrieve event information. 
 #>
 # Input bindings are passed in via param block.
-param($Timer)
-
+[CmdletBinding()]
+param (
+    $Timer
+)
 
 # Get the current universal time in the default string format
 $currentUTCtime = (Get-Date).ToUniversalTime()
@@ -25,11 +29,13 @@ if ($Timer.IsPastDue) {
     Write-Host "PowerShell timer is running late!"
 }
 
+# function to map the event field details retrieved from the S3 Bucket
 function New-EventsFieldsMapping {
-    Param (
+    [CmdletBinding()]
+    param (
         $events
     )
-    Write-Host "Starting field mapping for event logs via S3 Bucket"
+    Write-Host "Starting field mapping for event logs retrieved via S3 Bucket"
 
     $fieldMappings = @{
         'shortDescription'                 = 'event_description'
@@ -56,6 +62,7 @@ function New-EventsFieldsMapping {
         'processDetails_parentName'        = 'parent_path'
         'processDetails_parentPid'         = 'parent_pid'
         'processDetails_targetCommandLine' = 'target_cmdline'
+        
     }
 
     $fieldMappings.GetEnumerator() | ForEach-Object {
@@ -65,21 +72,30 @@ function New-EventsFieldsMapping {
     }
 }
 
+# function to map the event field details retrieved from the API
 function New-EventsAPIFieldsMapping {
-    Param (
+    [CmdletBinding()]
+    param (
         $events
     )
     Write-Host "Starting field mapping for event logs retrieved through API"
 
     $fieldMappings = @{
-        'shortDescription'                 = 'event_description'
-        'createTime'                       = 'backend_timestamp'
-        'eventId'                          = 'event_id'
-        'longDescription'                  = 'event_description'
-        'eventTime'                        = 'device_timestamp'
-        'securityEventCode'                = 'alert_id'
+        #'severity'                         = 'severity'
+        #'category'                         = 'category'
+        #'workflow'                         = 'workflow'
+        #'notes_present'                    = 'notes_present'
+        #'tags'                             = 'tags'
+        #'reason'                           = 'reason'
+        #'count'                            = 'count'
+        #'longDescription'                 = 'event_description'
+        'shortDescription'                 = 'reason'
+        'createTime'                       = 'create_time'
+        'eventId'                          = 'created_by_event_id'
+        'eventTime'                        = 'create_time'
+        'securityEventCode'                = 'legacy_alert_id'
         'eventType'                        = 'type'
-        'incidentId'                       = 'alert_id'
+        'incidentId'                       = 'legacy_alert_id'
         'deviceDetails_deviceIpAddress'    = 'device_external_ip'
         'deviceDetails_deviceIpV4Address'  = 'device_external_ip'
         'deviceDetails_deviceId'           = 'device_id'
@@ -91,34 +107,83 @@ function New-EventsAPIFieldsMapping {
         'processDetails_name'              = 'process_name'
         'processDetails_commandLine'       = 'process_cmdline'
         'processDetails_fullUserName'      = 'process_username'
-        'processDetails_processId'         = 'process_pid'
+        'processDetails_processId'         = 'threat_cause_actor_process_pid'
+        'processDetails_processGuid'       = 'threat_cause_process_guid'
         'processDetails_parentCommandLine' = 'process_cmdline'
         'processDetails_parentName'        = 'parent_path'
         'processDetails_parentPid'         = 'parent_pid'
         'processDetails_targetCommandLine' = 'target_cmdline'
+        'deviceDetails_deviceVersion'      = 'device_os_version'
+        'deviceInfo_deviceId'              = 'device_id'
+        'threatIndicators'                 = 'threat_indicators'
+        'orgKey'                           = 'org_key'
+        'lastUpdateTime'                   = 'last_update_time'
+        'firstEventTime'                   = 'first_event_time'
+        'lastEventTime'                    = 'last_event_time'
+        'threatId'                         = 'threat_id'
+        'deviceDetails_username'           = 'device_username'
+        'policyName'                       = 'policy_name'
+        'deviceInfo_targetPriorityType'    = 'target_value'
+        'policyId'                         = 'policy_id'
+        'reasonCode'                       = 'reason_code'
+        'deviceDetails_deviceLocation'     = 'device_location'
+        'threatActivity_dlp'               = 'threat_activity_dlp'
+        'threatActivity_phish'             = 'threat_activity_phish'
+        'threatActivity_c2'                = 'threat_activity_c2'
+        'threatCause_actorSha256'          = 'threat_cause_actor_sha256'
+        'threatCause_actorName'            = 'threat_cause_actor_name'
+        'threatCause_parentGuid'           = 'threat_cause_parent_guid'
+        'threatCause_reputation'           = 'threat_cause_reputation'
+        'threatCause_threatCategory'       = 'threat_cause_threat_category'
+        'threatCause_vector'               = 'threat_cause_vector'
+        'threatCause_causeEventId'         = 'threat_cause_cause_event_id'
+        'blocked_threatCategory'           = 'blocked_threat_category'
+        'notBlocked_threatCategory'        = 'not_blocked_threat_category'
+        'killChain_status'                 = 'kill_chain_status'
+        'sensorAction'                     = 'sensor_action'
+        'runState'                         = 'run_state'
+        'policyApplied'                    = 'policy_applied'   
+
     }
 
-    $fieldMappings.GetEnumerator() | ForEach-Object {
-        if (!$events.ContainsKey($_.Name)) {
-            $events[$_.Name] = $events[$_.Value]
-        }
+    # validate the hashtable and add headers
+    $fieldMappings = $fieldMappings.GetEnumerator() | Select-Object @{N = 'Name'; E = { $_.Value } }, @{N = 'NewName'; E = { $_.Key } } 
+    $fieldMappings = ( $fieldMappings | Where-Object { $_.NewName.length -gt 0 } | Group-Object -Property NewName | ForEach-Object { $_.Group[0] } )
+
+    $props = @('*')
+    ForEach ($prop in $fieldMappings) {
+        $props += @{N = "$($prop.NewName)"; E = ([Scriptblock]::Create("`$_.$($prop.Name)")) }
     }
-
-
-
+    return  ($events | Select-Object -Property $props -ExcludeProperty $fieldMappings.Name )
 }
 
+# function maps alert fields retrieved via the API before ingesting into Azure Monitor
 function New-AlertsFieldsMapping {
-    Param (
+    [CmdletBinding()]
+    param (
         $alerts
     )
     Write-Host "Starting field mapping for alert logs"
 
     $fieldMappings = @{
+        # "eventDescription": "[AzureSentinel] [Carbon Black has detected a threat against your company.] 
+        #   [https://defense-prod05.conferdeploy.net/device/20602996/incident/NE2F3D55-013a6074-000013b0-00000000-1d634654ecf865f-GUWNtEmJQhKmuOTxoRV8hA-6e5ae551-1cbb-45b3-b7a1-1569c0458f6b] 
+        #   [Process powershell.exe was detected by the report \"Execution - Powershell Execution With Unrestriced or Bypass Flags Detected\" in watchlist \"Carbon Black Endpoint Visibility\"] 
+        #   [Incident id: NE2F3D55-013a6074-000013b0-00000000-1d634654ecf865f-GUWNtEmJQhKmuOTxoRV8hA-6e5ae551-1cbb-45b3-b7a1-1569c0458f6b] [Threat score: 6] [Group: Standard] 
+        #   [Email: sanitized@sanitized.com] [Name: Endpoint2] [Type and OS: WINDOWS pscr-sensor] [Severity: 6]\n"
+        # "type" =  "type"
+        # "notifications" = "notifications"
+        # "success" = "success"
+        # "message" = "message"
+        # "eventType" = "CarbonBlackNotifications"
+        # "ResourceId" = "resource_id"
+        # "threatInfo_time" =  "create_time"
+        # "threatHunterInfo_orgId" = "org_key"
+        # "deviceInfo_targetPriorityCode" = "target_priority"
         'threatHunterInfo_summary'                      = 'reason_code'
         'threatHunterInfo_time'                         = 'create_time'
         'threatHunterInfo_indicators'                   = 'threat_indicators'
-        'threatHunterInfo_count'                        = '0'
+        'threatHunterInfo_count'                        = 'count'
         'threatHunterInfo_dismissed'                    = 'workflow.state'
         'threatHunterInfo_firstActivityTime'            = 'first_event_time'
         'threatHunterInfo_policyId'                     = 'process_guid'
@@ -140,11 +205,9 @@ function New-AlertsFieldsMapping {
         "threatHunterInfo_threatCause_originSourceType" = "threat_cause_vector"
         "threatHunterInfo_threatId"                     = "threat_id"
         "threatHunterInfo_lastUpdatedTime"              = "last_update_time"
-        #"threatHunterInfo_orgId_d": "12261",
         "threatInfo_incidentId"                         = "legacy_alert_id"
         "threatInfo_score"                              = "severity"
         "threatInfo_summary"                            = "reason"
-        #"threatInfo_time_d": "null",
         "threatInfo_indicators"                         = "threat_indicators"
         "threatInfo_threatCause_reputation"             = "threat_cause_reputation"
         "threatInfo_threatCause_actor"                  = "threat_cause_actor_sha256"
@@ -155,7 +218,6 @@ function New-AlertsFieldsMapping {
         "threatInfo_threatCause_originSourceType"       = "threat_cause_vector"
         "url"                                           = "alert_url"
         "eventTime"                                     = "create_time"
-        #"eventDescription_s": "[AzureSentinel] [Carbon Black has detected a threat against your company.] [https://defense-prod05.conferdeploy.net#device/20602996/incident/NE2F3D55-013a6074-000013b0-00000000-1d634654ecf865f-GUWNtEmJQhKmuOTxoRV8hA-6e5ae551-1cbb-45b3-b7a1-1569c0458f6b] [Process powershell.exe was detected by the report \"Execution - Powershell Execution With Unrestriced or Bypass Flags Detected\" in watchlist \"Carbon Black Endpoint Visibility\"] [Incident id: NE2F3D55-013a6074-000013b0-00000000-1d634654ecf865f-GUWNtEmJQhKmuOTxoRV8hA-6e5ae551-1cbb-45b3-b7a1-1569c0458f6b] [Threat score: 6] [Group: Standard] [Email: sanitized@sanitized.com] [Name: Endpoint2] [Type and OS: WINDOWS pscr-sensor] [Severity: 6]\n",
         "deviceInfo_deviceId"                           = "device_id"
         "deviceInfo_deviceName"                         = "device_name"
         "deviceInfo_groupName"                          = "policy_name"
@@ -163,17 +225,10 @@ function New-AlertsFieldsMapping {
         "deviceInfo_deviceType"                         = "device_os"
         "deviceInfo_deviceVersion"                      = "device_os_version"
         "deviceInfo_targetPriorityType"                 = "target_value"
-        # "deviceInfo_targetPriorityCode_d": "0",
         "deviceInfo_uemId"                              = "device_uem_id"
         "deviceInfo_internalIpAddress"                  = "device_internal_ip"
         "deviceInfo_externalIpAddress"                  = "device_external_ip"
-        #"ruleName_s": "AzureSentinel",
-        #"type_s": "THREAT_HUNTER",
-        #"notifications_s": "",
-        #"success_b": "null",
-        #"Message": "",
-        #"Type": "CarbonBlackNotifications_CL",
-        #"_ResourceId": "
+
     }
 
     $fieldMappings.GetEnumerator() | ForEach-Object {
@@ -183,31 +238,34 @@ function New-AlertsFieldsMapping {
     }
 }
 
+# function to expand the files retrieved from S3 bucket
 function Expand-GZipFile {
-    Param(
-        $infile,
-        $outfile
+    [CmdletBinding()]
+    param (
+        $InFile,
+        $OutFile
     )
-    Write-Host "Processing Expand-GZipFile for: infile = $infile, outfile = $outfile"
-    $inputfile = New-Object System.IO.FileStream $infile, ([IO.FileMode]::Open), ([IO.FileAccess]::Read), ([IO.FileShare]::Read)
-    $output = New-Object System.IO.FileStream $outfile, ([IO.FileMode]::Create), ([IO.FileAccess]::Write), ([IO.FileShare]::None)
-    $gzipStream = New-Object System.IO.Compression.GzipStream $inputfile, ([IO.Compression.CompressionMode]::Decompress)
+    Write-Host "Processing Expand-GZipFile for: InFile = $InFile, outfile = $OutFile"
+    $inputFile = New-Object System.IO.FileStream $InFile, ([IO.FileMode]::Open), ([IO.FileAccess]::Read), ([IO.FileShare]::Read)
+    $output = New-Object System.IO.FileStream $OutFile, ([IO.FileMode]::Create), ([IO.FileAccess]::Write), ([IO.FileShare]::None)
+    $gZipStream = New-Object System.IO.Compression.GzipStream $inputFile, ([IO.Compression.CompressionMode]::Decompress)
 
     $buffer = New-Object byte[](1024)
     while ($true) {
-        $read = $gzipstream.Read($buffer, 0, 1024)
+        $read = $gZipStream.Read($buffer, 0, 1024)
         if ($read -le 0) { break }
         $output.Write($buffer, 0, $read)
     }
 
-    $gzipStream.Close()
+    $gZipStream.Close()
     $output.Close()
-    $inputfile.Close()
+    $inputFile.Close()
 }
 
-# The function will call the Carbon Black API and retrieve the Audit, Event, and Notifications Logs
+# The function retrieves the Audit, Event, and Notifications Logs from the Carbon Black API and from the S3 bucket 
 function Get-CarbonBlackApi {
-    param*(
+    [CmdletBinding()]
+    param (
         $workspaceId = $env:workspaceId,
         $workspaceSharedKey = $env:workspaceKey,
         $hostName = $env:uri,
@@ -233,16 +291,14 @@ function Get-CarbonBlackApi {
     $NotificationTable = "CarbonBlackNotifications"
     
     # If there is no value for time interval, set a default of 15 minutes
-    if ("" -eq $time){
+    if ([string]::IsNullOrWhitespace($time)) {
         $time = 15
     }
     
     # The following times are needed for retreiving Events using the API. 
     # More information about bulk alert export can be found here: https://developer.carbonblack.com/reference/carbon-black-cloud/guides/alert-bulk-export/
-    $startTime = [System.DateTime]::UtcNow.AddMinutes( - $($time))
-    $now = [System.DateTime]::UtcNow
-    $startTimeLinux = [System.DateTime]::UtcNow.AddMinutes( - $($time)).ToString("yyyy-MM-ddTHH:mm:ss.fffK")
-    $nowLinux = [System.DateTime]::UtcNow.ToString("yyyy-MM-ddTHH:mm:ss.fffK")
+    $Global:startTime = [System.DateTime]::UtcNow.AddMinutes( - $($time))
+    $Global:now = [System.DateTime]::UtcNow
 
     # Remove extra slashes or spaces in hostName
     $hostName = $hostName.Trim() -replace "[.*/]$", ""
@@ -251,29 +307,22 @@ function Get-CarbonBlackApi {
         $logAnalyticsUri = "https://" + $workspaceId + ".ods.opinsights.azure.com"
     }
 
-    # Returning if the Log Analytics Uri is in incorrect format.
-    # Sample format supported: https://" + $customerId + ".ods.opinsights.azure.com
+    # Verify the Log Analytics Uri is formatted correctly.
+    # URI format example: https://" + <workspaceId> + ".ods.opinsights.azure.com
     if ($logAnalyticsUri -notmatch 'https:\/\/([\w\-]+)\.ods\.opinsights\.azure.([a-zA-Z\.]+)$') {
-        throw "VMware Carbon Black: Invalid Log Analytics Uri."
+        throw "VMware Carbon Black data connector: Invalid Log Analytics Uri."
     }
 
-    # Create authorization headers based on the api id and secret.
+    # Create authorization headers based on the API Id and API Secret.
     function Get-ApiAuthHeaders {
         [CmdletBinding()]
         param (
-            [Parameter()]
-            [string]
-            $Secret,
-            [Parameter()]
-            [string]
-            $Id
+            [string] $Secret,
+            [string] $Id
         )
 
-        $authHeader = @{
-            "X-Auth-Token" = "$($Secret)/$($Id)"
-        }
+        return @{"X-Auth-Token" = "$($Secret)/$($Id)" }
 
-        return $authHeader
     }   
 
     # Converting LogType to array
@@ -297,18 +346,18 @@ function Get-CarbonBlackApi {
         if ($LogTypeArr -contains "audit") {
             
             $authHeaders = Get-ApiAuthHeaders -Secret $apiSecretKey -Id $apiId
-
             $auditLogsResult = Invoke-RestMethod -Headers $authHeaders -Uri ([System.Uri]::new("$($hostName)/integrationServices/v3/auditlogs"))
 
             if ($auditLogsResult.success -eq $true) {
                 $AuditLogsJSON = $auditLogsResult.notifications | ConvertTo-Json -Depth 5
+
                 if (-not([string]::IsNullOrWhiteSpace($AuditLogsJSON))) {
                     $responseObj = (ConvertFrom-Json $AuditLogsJSON)
                     $status = Send-LogAnalyticsData -customerId $workspaceId -sharedKey $workspaceSharedKey -body ([System.Text.Encoding]::UTF8.GetBytes($AuditLogsJSON)) -logType $AuditLogTable;
-                    Write-Host("$($responseObj.count) New Carbon Black Audit Events as of $([DateTime]::UtcNow). Pushed data to Microsoft Sentinel Status code:$($status)")
+                    Write-Host("$($responseObj.count) new Carbon Black audit events at $([DateTime]::UtcNow) and sent to Microsoft Sentinel. Status code:$($status)")
                 }
                 else {
-                    Write-Host "No new Carbon Black Audit Events as of $([DateTime]::UtcNow)"
+                    Write-Host "No new Carbon Black Audit Events at $([DateTime]::UtcNow)"
                 }
             }
             else {
@@ -323,6 +372,7 @@ function Get-CarbonBlackApi {
         Write-Warning "API credentials were not defined, audit logs will not be ingested to workspace."
     }
 
+    # Is the S3 bucket information set?
     if (-not([string]::IsNullOrWhiteSpace($s3BucketName)) -and -not([string]::IsNullOrWhiteSpace($AWSAccessKeyId)) -and -not([string]::IsNullOrWhiteSpace($AWSSecretAccessKey)) -and -not([string]::IsNullOrWhiteSpace($OrgKey))) {
         if ($LogTypeArr -contains "event") {
             Get-BucketDetails -s3BucketName $s3BucketName -prefixFolder $EventprefixFolder -tableName $EventLogTable -logtype "event"
@@ -330,51 +380,62 @@ function Get-CarbonBlackApi {
         else {
             Write-Warning "'Event' was not selected as a LogType, event logs will not be ingested to the workspace."
         }
-    }
-    else {
-        Write-Information "S3Bucket credentials were not defined, event logs will be ingested via API."
+    } # If S3 bucket details are not set, is there event data API information?
+    elseif (-not([string]::IsNullOrWhiteSpace($eventsApiSecret) -and -not([string]::IsNullOrWhiteSpace($eventsApiId)))) {
+       
+        Write-Information "S3 Bucket credentials not defined and API credentials defined, event logs will be ingested via API."
         
-        ## This is the place to pull in the event logs via API
-
-        $reqText = '{"criteria": {"create_time": {"start": "' + $startTimeLinux + '", "end": "' + $nowLinux + '"}},"rows": 10000, "start": 0, "sort": [ {"field": "create_time", "order": "ASC"}]}'
-        $authHeaders = Get-ApiAuthHeaders -Secret $eventsApiSecret -Id $eventsApiId
-        $eventLogsResult = Invoke-RestMethod -Headers $authHeaders -Uri ([System.Uri]::new("$($hostName)/appservices/v6/orgs/$($OrgKey)/alerts/_search")) -Body ([System.Text.Encoding]::UTF8.GetBytes($reqText)) -Verbose -Method 'POST' -ContentType "application/json"
-
+        # Carbon Black requires the queried time range to be be specially formatted.  
+        # Format the search query to get the events for the specified time range. 
+        $reqText = '{"criteria": {"create_time": {"start": "' + $Global:startTime.ToString("yyyy-MM-ddTHH:mm:ss.fffK") + '", "end": "' + $Global:now.ToString("yyyy-MM-ddTHH:mm:ss.fffK") + '"}},"rows": 10000, "start": 0, "sort": [ {"field": "create_time", "order": "ASC"}]}'
+        # $authHeaders = Get-ApiAuthHeaders -Secret $eventsApiSecret -Id $eventsApiId
+        # Get event data from API
+        $eventLogsResult = Invoke-RestMethod -Headers (Get-ApiAuthHeaders -Secret $eventsApiSecret -Id $eventsApiId) -Uri ([System.Uri]::new("$($hostName)/appservices/v6/orgs/$($OrgKey)/alerts/_search")) -Body ([System.Text.Encoding]::UTF8.GetBytes($reqText)) -Verbose -Method 'POST' -ContentType "application/json"
+        
         if ( $eventLogsResult.results -ne "") {
-            $EventLogsJSON = $eventLogsResult.results | ConvertTo-Json -Depth 5
-            if (-not([string]::IsNullOrWhiteSpace($EventLogsJSON))) {
+            if ($eventLogsResult.num_available -ge 1) {
                 # Debugging output format.
-                # $EventLogsJSON | Out-File C:\temp\CBresponse.json
-                $responseObj = (ConvertFrom-Json $AuditLogsJSON)
-                $status = Send-LogAnalyticsData -customerId $workspaceId -sharedKey $workspaceSharedKey -body ([System.Text.Encoding]::UTF8.GetBytes($EventLogsJSON)) -logType $EventLogTable;
-                Write-Output $responseObj
-                Write-Host("$($responseObj.count) New Carbon Black Events as of $([DateTime]::UtcNow). Pushed data to Microsoft Sentinel status code:$($status)")
+                # $EventLogsJson | Out-File C:\temp\CBresponse.json -Encoding utf8 -Force
+                # $eventObj = ConvertFrom-Json $eventLogsJson
+                $mappedObjectsJson = New-EventsAPIFieldsMapping $eventLogsResult.results | ConvertTo-Json -Depth 6
+                
+                $status = Send-LogAnalyticsData -CustomerId $workspaceId -SharedKey $workspaceSharedKey -Body ([System.Text.Encoding]::UTF8.GetBytes($mappedObjectsJson)) -logType $EventLogTable;
+                if ($status -eq 200)
+                {
+                Write-Host "$($eventLogsResult.num_found) new Carbon Black events at $([DateTime]::UtcNow), sent to Sentinel workspace. "
+                }
+                else {
+                    Write-Warning "An error occurred sending $($eventLogsResult.num_found) Carbon Black events to Sentinel workspace. Response:$($status) "
+                }
             }
             else {
-                Write-Host "No new Carbon Black Events as of $([DateTime]::UtcNow)"
+                Write-Host "No new Carbon Black events at $([DateTime]::UtcNow)"
             }
-
         }
+    }   
+    else {
+        
+        Write-Information "Neither S3 Bucket credentials nor API credentials provided, events will not be ingested."
+
     }
 
     if ($LogTypeArr -contains "alertSIEMAPI" -or $LogTypeArr -contains "alertAWSS3") {
         if ($SIEMapiKey -eq '<Optional>' -or $SIEMapiId -eq '<Optional>' -or [string]::IsNullOrWhitespace($SIEMapiKey) -or [string]::IsNullOrWhitespace($SIEMapiId)) {
             if (-not([string]::IsNullOrWhiteSpace($s3BucketName)) -and -not([string]::IsNullOrWhiteSpace($AWSAccessKeyId)) -and -not([string]::IsNullOrWhiteSpace($AWSSecretAccessKey)) -and -not([string]::IsNullOrWhiteSpace($OrgKey))) {
                 $alerts = Get-BucketDetails -s3BucketName $s3BucketName -prefixFolder $AlertprefixFolder -tableName $NotificationTable -logtype "alert"
-                Write-Host "$($alerts.count) new Carbon Black Alerts as of $([DateTime]::UtcNow)were found and pushed."
+                Write-Host "$($alerts.count) new Carbon Black alerts found in S3 bucket at $([DateTime]::UtcNow) and sent to Sentinel workspace."
             }
         }
         elseif (-not([string]::IsNullOrWhiteSpace($SIEMapiKey)) -and -not([string]::IsNullOrWhiteSpace($SIEMapiId))) {
 
             $authHeaders = Get-ApiAuthHeaders -Secret $SIEMapiKey -Id $SIEMapiId
-
             $notifications = Invoke-RestMethod -Headers $authHeaders -Uri ([System.Uri]::new("$($hostName)/integrationServices/v3/notification"))
             if ($notifications.success -eq $true) {
                 $NotifLogJson = $notifications.notifications | ConvertTo-Json -Depth 5
                 if (-not([string]::IsNullOrWhiteSpace($NotifLogJson))) {
-                    $responseObj = (ConvertFrom-Json $NotifLogJson)
+                    $responseObj = ConvertFrom-Json $NotifLogJson
                     $status = Send-LogAnalyticsData -customerId $workspaceId -sharedKey $workspaceSharedKey -body ([System.Text.Encoding]::UTF8.GetBytes($NotifLogJson)) -logType $NotificationTable;
-                    Write-Host("$($responseObj.count) new Carbon Black Notifications as of $([DateTime]::UtcNow). Pushed data to Microsoft Sentinel status code:$($status)")
+                    Write-Host("$($responseObj.count) new Carbon Black notifications at $([DateTime]::UtcNow), sent to Sentinel workspace. Status code:$($status)")
                 }
                 else {
                     Write-Host "No new Carbon Black Notifications as of $([DateTime]::UtcNow)"
@@ -385,7 +446,7 @@ function Get-CarbonBlackApi {
             }
         }
         else {
-            Write-Warning "No SIEM API ID and/or Key or S3Bucket value was defined, therefore alert logs will not to ingested to workspace."
+            Write-Warning "No SIEM API ID and/or Key or S3 Bucket value was defined, therefore alert logs will not to ingested to workspace."
         }
     }
     else {
@@ -393,8 +454,19 @@ function Get-CarbonBlackApi {
     } 
 }
 
-# Create the function to create the authorization signature
-function Build-Signature ($customerId, $sharedKey, $date, $contentLength, $method, $contentType, $resource) {
+# Create an authorization signature
+function Build-Signature {
+    [CmdletBinding()]
+    param (
+        [string]$CustomerId, 
+        [string]$SharedKey, 
+        $Date, 
+        [string]$ContentLength, 
+        [string]$Method, 
+        [string]$ContentType, 
+        [string]$Resource
+    )
+
     $xHeaders = "x-ms-date:" + $date;
     $stringToHash = $method + "`n" + $contentLength + "`n" + $contentType + "`n" + $xHeaders + "`n" + $resource;
     $bytesToHash = [Text.Encoding]::UTF8.GetBytes($stringToHash);
@@ -407,15 +479,23 @@ function Build-Signature ($customerId, $sharedKey, $date, $contentLength, $metho
     return $authorization;
 }
 
-# Create the function to create and post the request
-function Send-LogAnalyticsData($customerId, $sharedKey, $body, $logType) {
+# Creates and posts data to Azure Monitor
+function Send-LogAnalyticsData {
+    [CmdletBinding()]
+    param (
+        $CustomerId, 
+        $SharedKey, 
+        $Body, 
+        $LogType
+    )
+    
     $TimeStampField = "eventTime"
     $method = "POST";
     $contentType = "application/json";
     $resource = "/api/logs";
     $rfc1123date = [DateTime]::UtcNow.ToString("r");
     $contentLength = $body.Length;
-    $signature = Build-Signature -customerId $customerId -sharedKey $sharedKey -date $rfc1123date -contentLength $contentLength -method $method -contentType $contentType -resource $resource;
+    $signature = Build-Signature -CustomerId $customerId -SharedKey $sharedKey -Date $rfc1123date -ContentLength $contentLength -Method $method -ContentType $contentType -Resource $resource;
     $logAnalyticsUri = $logAnalyticsUri + $resource + "?api-version=2016-04-01"
     $headers = @{
         "Authorization"        = $signature;
@@ -427,38 +507,40 @@ function Send-LogAnalyticsData($customerId, $sharedKey, $body, $logType) {
     return $response.StatusCode
 }
 
+# Get data from the AWS S3 Bucket
 function Get-BucketDetails {
+    [CmdletBinding()]
     param (
-        $s3BucketName,
-        $prefixFolder,
-        $tableName,
-        $logtype
+        $S3BucketName,
+        $PrefixFolder,
+        $TableName,
+        $Logtype
     )
 
-    if ($null -ne $s3BucketName) {
+    if ($null -ne $S3BucketName) {
         Set-AWSCredentials -AccessKey $AWSAccessKeyId -SecretKey $AWSSecretAccessKey
 
-        while ($startTime -le $now) {
-            $keyPrefix = "$prefixFolder/org_key=$OrgKey/year=$($startTime.Year)/month=$($startTime.Month)/day=$($startTime.Day)/hour=$($startTime.Hour)/minute=$($startTime.Minute)"
-            Get-S3Object -BucketName $s3BucketName -keyPrefix $keyPrefix | Read-S3Object -Folder "C:\tmp"
+        while ($Global:startTime -le $Global:now) {
+            $keyPrefix = "$prefixFolder/org_key=$OrgKey/year=$($Global:startTime.Year)/month=$($Global:startTime.Month)/day=$($Global:startTime.Day)/hour=$($Global:startTime.Hour)/minute=$($Global:startTime.Minute)"
+            Get-S3Object -BucketName $S3BucketName -keyPrefix $keyPrefix | Read-S3Object -Folder "C:\tmp"
             Write-Host "Files under $keyPrefix are downloaded."
 
             if (Test-Path -Path "/tmp/$keyPrefix") {
                 Get-ChildItem -Path "/tmp" -Recurse -Include *.gz |
                     ForEach-Object {
-                        $filename = $_.FullName
-                        $infile = $_.FullName
-                        $outfile = $_.FullName -replace ($_.Extension, '')
-                        Expand-GZipFile $infile.Trim() $outfile.Trim()
-                        $null = Remove-Item -Path $infile -Force -Recurse -ErrorAction Ignore
-                        $filename = $filename -replace ($_.Extension, '')
-                        $filename = $filename.Trim()
+                        $fileName = $_.FullName
+                        $inFile = $_.FullName
+                        $outFile = $_.FullName -replace ($_.Extension, '')
+                        Expand-GZipFile $inFile.Trim() $outfile.Trim()
+                        $null = Remove-Item -Path $inFile -Force -Recurse -ErrorAction Ignore
+                        $fileName = $fileName -replace ($_.Extension, '')
+                        $fileName = $fileName.Trim()
                         $AllEvents = [System.Collections.ArrayList]::new()
 
-                        foreach ($logEvent in [System.IO.File]::ReadLines($filename)) {
+                        foreach ($logEvent in [System.IO.File]::ReadLines($fileName)) {
                             $logs = $logEvent | ConvertFrom-Json
                             $hash = @{}
-                            $logs.psobject.properties | ForEach-Object { $hash[$_.Name] = $_.Value }
+                            $logs.PSObject.properties | ForEach-Object { $hash[$_.Name] = $_.Value }
                             $logevents = $hash
 
                             if ($logtype -eq "event") {
@@ -489,13 +571,13 @@ function Get-BucketDetails {
                 Remove-Item -LiteralPath "/tmp/$keyPrefix" -Force -Recurse
             }
 
-            $startTime = $startTime.AddMinutes(1)
+            $Global:startTime = $Global:startTime.AddMinutes(1)
         }
     }
 }
 
-# Execute the Function to Pull CarbonBlack data and Post to the Log Analytics Workspace
+# Execute the function to pull Carbon Black data and post to the Log Analytics Workspace
 Get-CarbonBlackAPI
 
 # Write an information log with the current time.
-Write-Host "PowerShell timer trigger function ran! TIME: $currentUTCtime"
+Write-Host "PowerShell timer trigger function ran at: $currentUTCtime"
