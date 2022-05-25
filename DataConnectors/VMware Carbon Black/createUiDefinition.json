@@ -232,6 +232,28 @@
 							"required": "[contains(basics('LogTypes'),'alertAWSS3')]"
 						},
 						"visible": "[contains(basics('LogTypes'),'alertAWSS3')]"
+					},
+					{
+						"name": "EventsAPIKey",
+						"type": "Microsoft.Common.TextBox",
+						"label": "Events API Key",
+						"toolTip": "EventsApiKey is only used if you are not retrieving log information using the S3 bucket.",
+						"defaultValue": "",
+						"constraints": {
+							"required": "[contains(basics('LogTypes'),'event')]"
+						},
+						"visible": "[contains(basics('LogTypes'),'event')]"
+					},
+					{
+						"name": "EventsApiId",
+						"type": "Microsoft.Common.TextBox",
+						"label": "Events API Id",
+						"toolTip": "EventsApiIs is only used if you are not retrieving log information using the S3 bucket.",
+						"defaultValue": "",
+						"constraints": {
+							"required": "[contains(basics('LogTypes'),'event')]"
+						},
+						"visible": "[contains(basics('LogTypes'),'event')]"
 					}
 				],
 				"visible": "[or(contains(basics('LogTypes'),'event'), contains(basics('LogTypes'),'alertAWSS3'))]"
@@ -248,6 +270,8 @@
 			"Uri": "[basics('APICredentials').URI]",
 			"SIEMApiKey": "[basics('SIEMAPICredentials').SIEMAPIKey]",
 			"SIEMApiID": "[basics('SIEMAPICredentials').SIEMAPIId]",
+			"EventsApiKey": "[basics('EventsAPICredentials').EventsAPIKey]",
+			"EventsApiID": "[basics('EventsAPICredentials').EventsAPIId]",
 			"TimeInterval": "[basics('SIEMAPICredentials').TimeInterval]",
 			"CarbonBlackOrgKey": "[basics('S3BucketCredentials').CarbonBlackOrgKey]",
 			"s3BucketName": "[basics('S3BucketCredentials').s3BucketName]",
