@@ -26,7 +26,7 @@
                 "alertAWSS3"
             ],
             "metadata": {
-                "description": "Event logs are supported with AWS S3 or Events API , Notification (alerts) logs are supported with SIEM API or AWS S3, Audit logs are supported with API."
+                "description": "Event logs are supported with AWS S3 or Events API, Notification (alerts) logs are supported with SIEM API or AWS S3, Audit logs are supported with API."
             }
         },
         "APIKey": {
@@ -68,14 +68,14 @@
             "type": "string",
             "defaultValue": "<Optional>",
             "metadata": {
-                "description": "EventsApiId is used to retreive events using the API. It is recommended that events are pulled using the event forwarded and S3 bucket, however this can be used as a slightly less prefferred option."
+                "description": "EventsApiId is used to retreive events using the API. It is recommended that events are pulled using the event forwarder to export data to AWS S3, however this can be used as a slightly less prefferred option."
             }
         },
         "EventsApiKey": {
             "type": "string",
             "defaultValue": "<Optional>",
             "metadata": {
-                "description": "EventsApiKey is used to retreive events using the API. It is recommended that events are pulled using the event forwarded and S3 bucket, however this can be used as a slightly less prefferred option."
+                "description": "EventsApiKey is used to retreive events using the API. It is recommended that events are pulled using the event forwarder to export data to AWS S3, however this can be used as a slightly less prefferred option."
             }
         },
         "TimeInterval": {
