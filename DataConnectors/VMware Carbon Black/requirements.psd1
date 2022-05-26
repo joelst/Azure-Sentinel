@@ -3,7 +3,7 @@
 #
 @{
     # For latest supported version, go to 'https://www.powershellgallery.com/packages/Az'. 
-    'Az' = '4.*'
-    'AWS.Tools.Common' = '4.1.14'
-    'AWS.Tools.S3' = '4.1.14'
+    'Az' = '8.*'
+    'AWS.Tools.Common' = '4.1.80'
+    'AWS.Tools.S3' = '4.1.80'
 }

@@ -17,7 +17,7 @@
             "defaultValue": "<workspaceKey>"
         },
         "CarbonBlackLogTypes": {
-            "type": "string",
+            "type": "array",
             "defaultValue": "event",
             "allowedValues": [
                 "event",

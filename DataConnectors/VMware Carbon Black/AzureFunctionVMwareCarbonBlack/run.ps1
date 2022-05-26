@@ -285,6 +285,18 @@ function Get-CarbonBlackApi {
         $eventsApiId = $env:eventsApiId
     )
 
+    # clean up any variables that my not have been set to make sure they work as expected.
+    if ($s3BucketName -eq "<S3BucketName>") {
+        $s3BucketName = $null
+    }
+    if ($AWSAccessKeyId -eq "<Folder Name in AWS S3>") {
+        $AWSAccessKeyId = $null
+    }
+    if ($AwsSecretAccessKey -eq "<AWSAccessKeyId>") {
+        $AwsSecretAccessKey = $null
+    }
+
+
     # Static assignments
     $AuditLogTable = "CarbonBlackAuditLogs"
     $EventLogTable = "CarbonBlackEvents"
@@ -324,6 +336,8 @@ function Get-CarbonBlackApi {
         return @{"X-Auth-Token" = "$($Secret)/$($Id)" }
 
     }   
+
+    $logType =  @("event", "audit", "alertSIEMAPI")
 
     # Converting LogType to array
     if ([string]::IsNullOrWhiteSpace($logType)) {
@@ -395,14 +409,11 @@ function Get-CarbonBlackApi {
         if ( $eventLogsResult.results -ne "") {
             if ($eventLogsResult.num_available -ge 1) {
                 # Debugging output format.
-                # $EventLogsJson | Out-File C:\temp\CBresponse.json -Encoding utf8 -Force
-                # $eventObj = ConvertFrom-Json $eventLogsJson
                 $mappedObjectsJson = New-EventsAPIFieldsMapping $eventLogsResult.results | ConvertTo-Json -Depth 6
                 
                 $status = Send-LogAnalyticsData -CustomerId $workspaceId -SharedKey $workspaceSharedKey -Body ([System.Text.Encoding]::UTF8.GetBytes($mappedObjectsJson)) -logType $EventLogTable;
-                if ($status -eq 200)
-                {
-                Write-Host "$($eventLogsResult.num_found) new Carbon Black events at $([DateTime]::UtcNow), sent to Sentinel workspace. "
+                if ($status -eq 200) {
+                    Write-Host "$($eventLogsResult.num_found) new Carbon Black events at $([DateTime]::UtcNow), sent to Sentinel workspace. "
                 }
                 else {
                     Write-Warning "An error occurred sending $($eventLogsResult.num_found) Carbon Black events to Sentinel workspace. Response:$($status) "
