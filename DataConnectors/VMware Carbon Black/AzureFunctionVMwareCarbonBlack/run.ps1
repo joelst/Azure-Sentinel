@@ -3,7 +3,7 @@
     Language:       PowerShell
     Version:        1.1
     Author:         Microsoft
-    Last Modified:  5/19/2022
+    Last Modified:  5/25/2022
     Comment:        Release to include option for API Event Logs
 
     DESCRIPTION
@@ -123,7 +123,7 @@ function New-EventsAPIFieldsMapping {
         'threatId'                         = 'threat_id'
         'deviceDetails_username'           = 'device_username'
         'policyName'                       = 'policy_name'
-        'deviceInfo_targetPriorityType'    = 'target_value'
+        'deviceDetails_targetPriorityType' = 'target_value'
         'policyId'                         = 'policy_id'
         'reasonCode'                       = 'reason_code'
         'deviceDetails_deviceLocation'     = 'device_location'
@@ -281,8 +281,8 @@ function Get-CarbonBlackApi {
         $AlertprefixFolder = $env:AlertPrefixFolderName,
         $AWSAccessKeyId = $env:AWSAccessKeyId,
         $AWSSecretAccessKey = $env:AWSSecretAccessKey,
-        $eventsApiSecret = $env:eventsApiKey,
-        $eventsApiId = $env:eventsApiId
+        $eventsApiSecret = $env:EventsApiKey,
+        $eventsApiId = $env:EventsApiId
     )
 
     # clean up any variables that my not have been set to make sure they work as expected.
