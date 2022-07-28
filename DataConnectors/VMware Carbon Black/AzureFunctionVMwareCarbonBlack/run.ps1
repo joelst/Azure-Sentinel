@@ -157,7 +157,7 @@ function New-EventsAPIFieldsMapping {
     return  ($events | Select-Object -Property $props -ExcludeProperty $fieldMappings.Name )
 }
 
-# function maps alert fields retrieved via the API before ingesting into Azure Monitor
+# function maps alert fields before ingesting into Azure Monitor
 function New-AlertsFieldsMapping {
     [CmdletBinding()]
     param (
@@ -194,7 +194,7 @@ function New-AlertsFieldsMapping {
         'threatHunterInfo_responseAlarmId'              = 'id'
         'threatHunterInfo_responseSeverity'             = 'Severity'
         'threatHunterInfo_runState'                     = 'run_state'
-        "threatHunterInfo_sha256_"                      = "threat_cause_actor_sha256"
+        "threatHunterInfo_sha256"                       = "threat_cause_actor_sha256"
         "threatHunterInfo_status"                       = "status"
         "threatHunterInfo_targetPriority"               = "target_value"
         "threatHunterInfo_threatCause_reputation"       = "threat_cause_reputation"
@@ -339,7 +339,7 @@ function Get-CarbonBlackApi {
 
     $logType =  @("event", "audit", "alertSIEMAPI")
 
-    # Converting LogType to array
+    # Converting logType to array
     if ([string]::IsNullOrWhiteSpace($logType)) {
         if ($SIEMapiKey -eq '<Optional>' -or $SIEMapiId -eq '<Optional>' -or [string]::IsNullOrWhitespace($SIEMapiKey) -or [string]::IsNullOrWhitespace($SIEMapiId)) {
             $LogTypeArr = @("event", "audit")
@@ -375,7 +375,7 @@ function Get-CarbonBlackApi {
                 }
             }
             else {
-                Write-Host "AuditLogsResult API status failed, Please check."
+                Write-Host "Audit Logs Result API status failed, Please check."
             }
         }
         else {
